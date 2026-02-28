@@ -45,7 +45,7 @@ Pega el siguiente contenido (ajusta con tus valores):
 ```env
 PORT=3001
 NODE_ENV=production
-APP_URL=http://10.18.170.44:3001
+APP_URL=https://xmlclean.consafedev.qzz.io
 DATABASE_URL="postgresql://xml_cleaner_user:R3n4t42017#@localhost:5432/xml_cleaner_db"
 STRIPE_SECRET_KEY="sk_live_..."
 VITE_STRIPE_PUBLISHABLE_KEY="pk_live_..."
@@ -84,7 +84,51 @@ npm run build        # Reconstruye el frontend
 pm2 restart xml-cleaner
 ```
 
-## 4. Notas Importantes
+## 4. Configuración de Cloudflare Tunnel
+
+Para exponer tu aplicación de forma segura bajo el dominio `xmlclean.consafedev.qzz.io`:
+
+1. **Instalar cloudflared** (si no lo tienes):
+```bash
+curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+sudo dpkg -i cloudflared.deb
+```
+
+2. **Autenticar cloudflared**:
+```bash
+cloudflared tunnel login
+```
+
+3. **Crear el túnel**:
+```bash
+cloudflared tunnel create xml-cleaner-tunnel
+```
+
+4. **Configurar el DNS**:
+```bash
+cloudflared tunnel route dns xml-cleaner-tunnel xmlclean.consafedev.qzz.io
+```
+
+5. **Configurar el túnel localmente**:
+Crea un archivo de configuración (ej. `~/.cloudflared/config.yml`):
+```yaml
+tunnel: <TUNNEL_ID>
+credentials-file: /home/daniel/.cloudflared/<TUNNEL_ID>.json
+
+ingress:
+  - hostname: xmlclean.consafedev.qzz.io
+    service: http://localhost:3001
+  - service: http_status:404
+```
+
+6. **Ejecutar el túnel como servicio**:
+```bash
+sudo cloudflared service install
+sudo systemctl start cloudflared
+sudo systemctl enable cloudflared
+```
+
+## 5. Notas Importantes
 - **Puerto**: La app corre en el puerto 3001 por defecto (para evitar conflictos con el puerto 3000).
-- **Acceso Externo**: Si quieres acceder desde fuera de tu red local, deberás configurar un proxy inverso (Nginx) o usar Cloudflare Tunnel.
+- **Acceso Externo**: Configurado vía Cloudflare Tunnel en `https://xmlclean.consafedev.qzz.io`.
 - **Base de Datos**: La app se conectará a `localhost:5432` dentro del servidor.
