@@ -81,7 +81,7 @@ async function startServer() {
         success_url: `${process.env.APP_URL}/dashboard?success=true`,
         cancel_url: `${process.env.APP_URL}/dashboard?canceled=true`,
       });
-      res.json({ id: session.id });
+      res.json({ url: session.url });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

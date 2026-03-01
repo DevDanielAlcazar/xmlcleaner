@@ -130,17 +130,16 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
     a.click();
   };
 
-  const handleUpgrade = async () => {
+  const handleUpgrade = async (priceId?: string) => {
     try {
       const response = await fetch("/api/billing/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: "price_..." }), // You should replace this with your actual Stripe Price ID
+        body: JSON.stringify({ planId: priceId || "prod_U43LrYqn5TkmSx" }),
       });
       const session = await response.json();
-      const stripe = await stripePromise;
-      if (stripe) {
-        await (stripe as any).redirectToCheckout({ sessionId: session.id });
+      if (session.url) {
+        window.location.href = session.url;
       }
     } catch (err) {
       console.error("Stripe error:", err);
@@ -400,22 +399,46 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
             <div className="col-span-3 p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
               <h2 className="text-2xl font-display font-bold mb-8">{t('billing')}</h2>
               <div className="grid grid-cols-2 gap-8">
-                <div className="p-8 rounded-3xl bg-brand text-white">
-                  <p className="text-sm opacity-70 mb-2">Current Plan</p>
-                  <h3 className="text-3xl font-display font-bold mb-6">{plan}</h3>
-                  <div className="flex justify-between items-center p-4 rounded-2xl bg-white/10 border border-white/20">
-                    <span className="text-sm">Credits Remaining</span>
-                    <span className="text-xl font-bold">{credits}</span>
+                <div className="p-8 rounded-3xl border border-[var(--border)] bg-[var(--bg)] flex flex-col">
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <h3 className="text-xl font-bold mb-1">Plan Mensual</h3>
+                      <p className="text-sm opacity-50">Ideal para trabajo constante</p>
+                    </div>
+                    <span className="text-2xl font-display font-bold">$29<span className="text-sm opacity-50">/mes</span></span>
                   </div>
-                </div>
-                <div className="p-8 rounded-3xl border border-[var(--border)] bg-[var(--bg)]">
-                  <h4 className="font-bold mb-4">Upgrade your plan</h4>
-                  <p className="text-sm opacity-50 mb-6">Get unlimited credits and priority processing for your entire team.</p>
+                  <ul className="space-y-3 mb-8 flex-1">
+                    <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Créditos ilimitados</li>
+                    <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Soporte prioritario</li>
+                    <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Sin anuncios</li>
+                  </ul>
                   <button 
-                    onClick={handleUpgrade}
-                    className="w-full py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20"
+                    onClick={() => handleUpgrade("prod_U43LrYqn5TkmSx")}
+                    className="w-full py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] transition-transform"
                   >
-                    {t('expand')}
+                    Suscribirse Mensual
+                  </button>
+                </div>
+
+                <div className="p-8 rounded-3xl border-2 border-brand bg-brand/5 flex flex-col relative overflow-hidden">
+                  <div className="absolute top-4 right-4 bg-brand text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-widest">Ahorra 20%</div>
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <h3 className="text-xl font-bold mb-1">Plan Anual</h3>
+                      <p className="text-sm opacity-50">Ahorras dos meses con las mismas capacidades ilimitadas</p>
+                    </div>
+                    <span className="text-2xl font-display font-bold">$290<span className="text-sm opacity-50">/año</span></span>
+                  </div>
+                  <ul className="space-y-3 mb-8 flex-1">
+                    <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Todo lo del plan mensual</li>
+                    <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> 2 meses gratis</li>
+                    <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Acceso anticipado a funciones</li>
+                  </ul>
+                  <button 
+                    onClick={() => handleUpgrade("prod_U43LoAXN0Bdcj7")}
+                    className="w-full py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] transition-transform"
+                  >
+                    Suscribirse Anual
                   </button>
                 </div>
               </div>

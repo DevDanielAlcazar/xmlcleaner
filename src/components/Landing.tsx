@@ -285,7 +285,7 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
             className="flex flex-col items-center gap-6"
           >
             <button 
-              onClick={onStart}
+              onClick={() => setAuthMode('register')}
               className="group relative bg-brand text-white px-10 py-5 rounded-2xl font-bold text-xl transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-brand/40"
             >
               {t('tryFree')}
