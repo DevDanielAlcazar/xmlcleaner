@@ -73,6 +73,22 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
     }
   };
 
+  const handleUpgradePro = async (userId: string) => {
+    if (!window.confirm("¿Estás seguro de elevar este usuario a PRO? Esto le dará 10,000 créditos y el plan Pro Unlimited.")) return;
+    try {
+      const res = await fetch("/api/admin/users/upgrade-pro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId })
+      });
+      if (res.ok) {
+        fetchUsers();
+      }
+    } catch (err) {
+      console.error("Error upgrading user:", err);
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-[var(--bg)]">
       {/* Admin Sidebar */}
@@ -246,15 +262,26 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
                         <p className="text-xs opacity-40">{u.joined}</p>
                       </td>
                       <td className="px-8 py-6 text-right">
-                        <button 
-                          onClick={() => {
-                            setEditingUser(u);
-                            setNewCredits(u.credits);
-                          }}
-                          className="p-2 rounded-lg hover:bg-[var(--border)] opacity-40 hover:opacity-100 transition-all"
-                        >
-                          <MoreHorizontal size={14} />
-                        </button>
+                        <div className="flex justify-end gap-2">
+                          {u.plan !== 'Pro Unlimited' && (
+                            <button 
+                              onClick={() => handleUpgradePro(u.id)}
+                              className="p-2 rounded-lg hover:bg-emerald-50 text-emerald-600 transition-colors"
+                              title="Elevar a PRO"
+                            >
+                              <ArrowUpRight size={14} />
+                            </button>
+                          )}
+                          <button 
+                            onClick={() => {
+                              setEditingUser(u);
+                              setNewCredits(u.credits);
+                            }}
+                            className="p-2 rounded-lg hover:bg-[var(--border)] opacity-40 hover:opacity-100 transition-all"
+                          >
+                            <MoreHorizontal size={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

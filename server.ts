@@ -90,6 +90,19 @@ async function startServer() {
     }
   });
 
+  app.post("/api/admin/users/upgrade-pro", async (req, res) => {
+    const { userId } = req.body;
+    try {
+      await pool.query(
+        "UPDATE users SET credits = 10000, plan = 'Pro Unlimited' WHERE id = $1",
+        [userId]
+      );
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: "Error upgrading user to Pro" });
+    }
+  });
+
   // Stripe Checkout Session
   app.post("/api/billing/create-checkout-session", async (req, res) => {
     try {
