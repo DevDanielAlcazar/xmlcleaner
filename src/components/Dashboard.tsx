@@ -352,21 +352,27 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                     </div>
                     
                     <div className="grid grid-cols-3 gap-4 mb-8">
-                      <StatCard label="Cleaned" value={results.filter(r => r.success).length} />
-                      <StatCard label="Exceptions" value={results.filter(r => !r.success).length} />
-                      <StatCard label="Efficiency" value="100%" />
+                      <StatCard label="Cleaned" value={results.filter(r => r.success && !r.warnings.some(w => w.toLowerCase().includes("error") || w.toLowerCase().includes("alerta"))).length} />
+                      <StatCard label="Exceptions" value={results.filter(r => !r.success || r.warnings.some(w => w.toLowerCase().includes("error") || w.toLowerCase().includes("alerta"))).length} />
+                      <StatCard label="Efficiency" value={`${Math.round((results.filter(r => r.success && !r.warnings.some(w => w.toLowerCase().includes("error") || w.toLowerCase().includes("alerta"))).length / results.length) * 100)}%`} />
                     </div>
 
                     <div className="space-y-2">
                       {results.slice(0, 3).map((r, i) => (
                         <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/10 border border-white/20">
                           <div className="flex items-center gap-3">
-                            {r.success ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+                            {!r.success ? (
+                              <AlertCircle size={18} className="text-rose-500" />
+                            ) : r.warnings.some(w => w.toLowerCase().includes("error") || w.toLowerCase().includes("alerta") || w.toLowerCase().includes("faltante")) ? (
+                              <AlertCircle size={18} className="text-amber-500" />
+                            ) : (
+                              <CheckCircle2 size={18} className="text-emerald-500" />
+                            )}
                             <span className="text-sm font-medium">{r.originalName}</span>
                           </div>
-                          <div className="flex gap-2">
-                            {r.warnings.slice(0, 1).map((w, j) => (
-                              <span key={j} className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full uppercase font-bold tracking-wider">{w}</span>
+                          <div className="flex flex-wrap gap-2 justify-end max-w-[50%]">
+                            {r.warnings.map((w, j) => (
+                              <span key={j} className="text-[10px] bg-white/20 px-2 py-1 rounded-lg uppercase font-bold tracking-wider leading-tight text-right">{w}</span>
                             ))}
                           </div>
                         </div>

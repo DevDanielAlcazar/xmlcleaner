@@ -43,22 +43,46 @@ function validateStructure(text: string, warnings: string[]): void {
     // Check for parser errors
     const parseError = xmlDoc.getElementsByTagName("parsererror");
     if (parseError.length > 0) {
-      throw new Error("Error de parseo estructural.");
+      const errorMsg = parseError[0].textContent || "Error desconocido";
+      warnings.push(`Error estructural crítico: El XML está mal formado o truncado. Detalle: ${errorMsg.substring(0, 50)}...`);
+      return; // Stop further validation if it can't be parsed
     }
 
-    const root = xmlDoc.documentElement;
-    
-    // Basic CFDI validation if applicable
-    if (root.nodeName.includes("Comprobante")) {
-      const version = root.getAttribute("Version");
-      if (version !== "4.0") {
-        warnings.push(`Versión de CFDI detectada: ${version || 'Desconocida'}. El estándar actual es 4.0.`);
+      const root = xmlDoc.documentElement;
+      
+      // Namespace validation
+      if (root.namespaceURI !== "http://www.sat.gob.mx/cfd/4") {
+        warnings.push("Namespace CFDI incorrecto o versión antigua detectada.");
       }
 
-      const rfcEmisor = xmlDoc.getElementsByTagNameNS("*", "Emisor")[0]?.getAttribute("Rfc");
-      if (rfcEmisor && !/^[A-Z&Ñ]{3,4}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/.test(rfcEmisor)) {
-        warnings.push(`RFC del Emisor parece tener un formato inválido: ${rfcEmisor}`);
-      }
+      // Basic CFDI validation if applicable
+      if (root.nodeName.includes("Comprobante")) {
+        const version = root.getAttribute("Version");
+        if (version !== "4.0") {
+          warnings.push(`Versión de CFDI detectada: ${version || 'Desconocida'}. El estándar actual es 4.0.`);
+        }
+
+        // Date format validation (YYYY-MM-DDThh:mm:ss)
+        const fecha = root.getAttribute("Fecha");
+        if (fecha && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(fecha)) {
+          warnings.push(`Formato de Fecha inválido: ${fecha}. Debe ser AAAA-MM-DDThh:mm:ss`);
+        }
+
+        // Totals validation
+        const subtotal = parseFloat(root.getAttribute("SubTotal") || "0");
+        const total = parseFloat(root.getAttribute("Total") || "0");
+        const descuento = parseFloat(root.getAttribute("Descuento") || "0");
+        
+        // Simple check: Total should be roughly Subtotal - Descuento + Impuestos
+        // We can't be 100% sure without parsing all taxes, but we can flag if Total < Subtotal - Descuento
+        if (total < (subtotal - descuento) - 0.01) {
+          warnings.push("Alerta: El Total es menor al Subtotal menos Descuento. Verifique los importes.");
+        }
+
+        const rfcEmisor = xmlDoc.getElementsByTagNameNS("*", "Emisor")[0]?.getAttribute("Rfc");
+        if (rfcEmisor && !/^[A-Z&Ñ]{3,4}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/.test(rfcEmisor)) {
+          warnings.push(`RFC del Emisor parece tener un formato inválido: ${rfcEmisor}`);
+        }
 
       const requiredAttrs = ["Version", "Fecha", "Sello", "NoCertificado", "Certificado", "SubTotal", "Moneda", "Total", "TipoDeComprobante", "Exportacion", "LugarExpedicion"];
       requiredAttrs.forEach(attr => {
@@ -139,6 +163,11 @@ export async function cleanXML(file: File): Promise<CleanResult> {
     // 4. Rebuild Declaration
     content = rebuildXMLDeclaration(content);
     warnings.push("Declaración XML normalizada a UTF-8.");
+
+    // 4.5 Check for unescaped ampersands (common error)
+    if (/&(?!(amp|lt|gt|quot|apos|#\d+|#x[a-f\d]+);)/i.test(content)) {
+      warnings.push("Alerta: Se detectaron símbolos '&' no escapados. Esto romperá la validación del SAT.");
+    }
 
     // 5. Structural Validation (New)
     validateStructure(content, warnings);
