@@ -152,7 +152,10 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
       const response = await fetch("/api/billing/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: priceId || "price_1T5vEpE2HOY0nwdF4XTuqzN8" }),
+        body: JSON.stringify({ 
+          planId: priceId || "price_1T5vEpE2HOY0nwdF4XTuqzN8",
+          userId: user?.id
+        }),
       });
       const session = await response.json();
       if (session.url) {
@@ -196,12 +199,12 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
           <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)]">
             <div className="flex justify-between items-center mb-2">
               <span className="text-xs font-bold opacity-40 uppercase tracking-widest">{t('credits')}</span>
-              <span className="text-sm font-bold">{credits}/5</span>
+              <span className="text-sm font-bold">{credits}/{plan === 'Pro Unlimited' ? '10k' : '5'}</span>
             </div>
             <div className="h-2 bg-[var(--bg)] rounded-full overflow-hidden mb-4">
               <motion.div 
                 initial={{ width: 0 }}
-                animate={{ width: `${(credits / 5) * 100}%` }}
+                animate={{ width: `${(credits / (plan === 'Pro Unlimited' ? 10000 : 5)) * 100}%` }}
                 className="h-full bg-emerald-500"
               />
             </div>

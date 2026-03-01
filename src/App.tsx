@@ -32,7 +32,10 @@ export default function App() {
             }}
           />
         ) : (
-          <AdminPanel onBack={() => setView('admin')} />
+          <AdminPanel 
+            user={user}
+            onBack={() => setView('dashboard')} 
+          />
         )}
       </LanguageProvider>
     </ThemeProvider>

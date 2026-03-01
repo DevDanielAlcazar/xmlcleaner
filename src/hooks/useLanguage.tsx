@@ -6,7 +6,7 @@ const translations = {
   es: {
     heroTitle: "Limpia tus archivos XML",
     heroHighlight: "en segundos.",
-    heroSub: "La herramienta definitiva para equipos administrativos. Corrige formatos, elimina caracteres inválidos y asegura la compatibilidad con sistemas PAC al instante.",
+    heroSub: "La herramienta definitiva para equipos administrativos. Corrige formatos, elimina caracteres inválidos y asegura la compatibilidad con sistemas PAC al instante. Ahora con reparación total y alertas inteligentes en tus XML.",
     tryFree: "Probar gratis",
     freeCredits: "Obtén 5 créditos gratis al instante",
     features: "Características",
@@ -68,7 +68,7 @@ const translations = {
   en: {
     heroTitle: "Clean your XML files",
     heroHighlight: "in seconds.",
-    heroSub: "The ultimate tool for administrative teams. Correct formatting, remove invalid characters, and ensure compatibility with PAC systems instantly.",
+    heroSub: "The ultimate tool for administrative teams. Correct formatting, remove invalid characters, and ensure compatibility with PAC systems instantly. Now with total repair and intelligent XML alerts.",
     tryFree: "Try for free",
     freeCredits: "Get 5 free credits instantly",
     features: "Features",

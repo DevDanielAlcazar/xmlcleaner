@@ -28,7 +28,6 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
       if (authMode === 'register') {
         if (email !== emailConfirm) return setError('Los correos no coinciden');
         if (password !== passwordConfirm) return setError('Las contraseñas no coinciden');
-        if (!rfc || !curp) return setError('RFC y CURP son obligatorios para recuperación');
 
         const res = await fetch('/api/auth/register', {
           method: 'POST',
@@ -206,25 +205,29 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
                       <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 opacity-20" size={18} />
                       <input 
                         type="text" 
-                        placeholder="RFC" 
+                        placeholder="RFC (Opcional)" 
                         className="w-full bg-[var(--card)] border border-[var(--border)] rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:border-brand"
                         value={rfc}
                         onChange={e => setRfc(e.target.value.toUpperCase())}
-                        required
                       />
                     </div>
                     <div className="relative">
                       <Key className="absolute left-4 top-1/2 -translate-y-1/2 opacity-20" size={18} />
                       <input 
                         type="text" 
-                        placeholder="CURP" 
+                        placeholder="CURP (Opcional)" 
                         className="w-full bg-[var(--card)] border border-[var(--border)] rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:border-brand"
                         value={curp}
                         onChange={e => setCurp(e.target.value.toUpperCase())}
-                        required
                       />
                     </div>
                   </div>
+                )}
+
+                {authMode === 'register' && (
+                  <p className="text-[10px] opacity-40 text-center leading-tight">
+                    * El RFC y CURP son opcionales. Puedes agregar uno o ambos para recuperar tu cuenta si olvidas tu contraseña.
+                  </p>
                 )}
 
                 <button className="w-full bg-brand text-white py-4 rounded-2xl font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] transition-transform">
@@ -304,17 +307,43 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
           initial={{ opacity: 0, scale: 0.9, y: 100 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ delay: 0.5, type: "spring", damping: 20 }}
-          className="mt-32 relative mx-auto max-w-5xl"
+          className="mt-32 relative mx-auto max-w-6xl"
         >
-          <div className="aspect-video rounded-3xl overflow-hidden border border-[var(--border)] shadow-2xl bg-[var(--card)] p-4">
-            <div className="w-full h-full rounded-2xl bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center opacity-50">
-              <span className="font-mono text-xs uppercase tracking-[0.3em]">Preview Interface</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
+              <div className="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mb-6">
+                <CheckCircle2 size={24} />
+              </div>
+              <h3 className="text-xl font-bold mb-4">Reparación Total</h3>
+              <p className="text-sm opacity-60 leading-relaxed">
+                Algoritmos avanzados que reconstruyen nodos dañados y eliminan caracteres invisibles que bloquean tus trámites.
+              </p>
+            </div>
+            
+            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
+              <div className="w-12 h-12 bg-brand/10 text-brand rounded-2xl flex items-center justify-center mb-6">
+                <AlertCircle size={24} />
+              </div>
+              <h3 className="text-xl font-bold mb-4">Alertas Inteligentes</h3>
+              <p className="text-sm opacity-60 leading-relaxed">
+                Diagnóstico instantáneo de errores CFDI 4.0. Detectamos discrepancias en RFC y versiones antes de que el SAT lo haga.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
+              <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mb-6">
+                <ShieldCheck size={24} />
+              </div>
+              <h3 className="text-xl font-bold mb-4">Seguridad Bancaria</h3>
+              <p className="text-sm opacity-60 leading-relaxed">
+                Tus datos viajan cifrados y se eliminan automáticamente. Cumplimos con los estándares más altos de privacidad.
+              </p>
             </div>
           </div>
           
           {/* Decorative elements */}
-          <div className="absolute -top-12 -right-12 w-24 h-24 bg-brand/20 rounded-full blur-3xl" />
-          <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-amber-500/20 rounded-full blur-3xl" />
+          <div className="absolute -top-20 -right-20 w-64 h-64 bg-brand/10 rounded-full blur-[100px] -z-10" />
+          <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-amber-500/10 rounded-full blur-[100px] -z-10" />
         </motion.div>
       </main>
 

@@ -53,10 +53,11 @@ async function startServer() {
     try {
       const usersCount = await pool.query("SELECT COUNT(*) FROM users");
       const processesCount = await pool.query("SELECT COUNT(*) FROM processes WHERE created_at >= CURRENT_DATE");
+      const revenue = await pool.query("SELECT SUM(amount) as total FROM (SELECT 29 as amount FROM users WHERE plan = 'Pro Unlimited') as sub");
       
       res.json({
         totalUsers: parseInt(usersCount.rows[0].count),
-        dailyRevenue: 0,
+        dailyRevenue: parseFloat(revenue.rows[0].total || "0") / 30, // Rough estimate
         processedToday: parseInt(processesCount.rows[0].count),
         anomalyRate: 0.72
       });
@@ -65,12 +66,34 @@ async function startServer() {
     }
   });
 
+  app.get("/api/admin/users", async (req, res) => {
+    try {
+      const result = await pool.query(
+        "SELECT id, name, email, plan, credits, created_at as joined FROM users ORDER BY created_at DESC"
+      );
+      res.json(result.rows);
+    } catch (err) {
+      res.status(500).json({ error: "Database error" });
+    }
+  });
+
+  app.post("/api/admin/users/update-credits", async (req, res) => {
+    const { userId, credits } = req.body;
+    try {
+      await pool.query("UPDATE users SET credits = $1 WHERE id = $2", [credits, userId]);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: "Error updating credits" });
+    }
+  });
+
   // Stripe Checkout Session
   app.post("/api/billing/create-checkout-session", async (req, res) => {
     try {
-      const { planId } = req.body;
+      const { planId, userId } = req.body;
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
+        client_reference_id: userId?.toString(),
         line_items: [
           {
             price: planId,
@@ -94,7 +117,7 @@ async function startServer() {
       const hashedPassword = await bcrypt.hash(password, 10);
       await pool.query(
         "INSERT INTO users (name, email, password_hash, rfc, curp, security_answer_rfc, security_answer_curp) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-        [name, email, hashedPassword, rfc, curp, rfc, curp]
+        [name, email, hashedPassword, rfc || null, curp || null, rfc || null, curp || null]
       );
       res.json({ success: true, message: "Usuario registrado correctamente" });
     } catch (err: any) {
@@ -134,10 +157,23 @@ async function startServer() {
   app.post("/api/auth/recover", async (req, res) => {
     const { email, rfc, curp, newPassword } = req.body;
     try {
-      const result = await pool.query(
-        "SELECT * FROM users WHERE email = $1 AND rfc = $2 AND curp = $3",
-        [email, rfc, curp]
-      );
+      let query = "SELECT * FROM users WHERE email = $1";
+      let params = [email];
+      
+      if (rfc && curp) {
+        query += " AND (rfc = $2 OR curp = $3)";
+        params.push(rfc, curp);
+      } else if (rfc) {
+        query += " AND rfc = $2";
+        params.push(rfc);
+      } else if (curp) {
+        query += " AND curp = $2";
+        params.push(curp);
+      } else {
+        return res.status(400).json({ error: "Se requiere RFC o CURP para la recuperación" });
+      }
+
+      const result = await pool.query(query, params);
       if (result.rows.length === 0) {
         return res.status(404).json({ error: "Datos de recuperación incorrectos" });
       }
@@ -159,6 +195,71 @@ async function startServer() {
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ error: "Error al registrar proceso" });
+    }
+  });
+
+  // Stripe Webhook Handler
+  app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    const sig = req.headers['stripe-signature'] as string;
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    try {
+      if (!webhookSecret) {
+        throw new Error('Stripe webhook secret not configured');
+      }
+      const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+      
+      switch (event.type) {
+        case 'checkout.session.completed':
+          const session = event.data.object as any;
+          const userId = session.client_reference_id;
+          const customerId = session.customer;
+          const customerEmail = session.customer_details?.email;
+          
+          if (userId) {
+            await pool.query(
+              "UPDATE users SET stripe_customer_id = $1 WHERE id = $2",
+              [customerId, userId]
+            );
+          } else if (customerEmail) {
+            // Fallback: Link by email if reference ID is missing
+            await pool.query(
+              "UPDATE users SET stripe_customer_id = $1 WHERE email = $2",
+              [customerId, customerEmail]
+            );
+          }
+          break;
+        case 'customer.subscription.created':
+        case 'customer.subscription.updated':
+          const subscription = event.data.object as any;
+          const subCustomerId = subscription.customer;
+          const status = subscription.status;
+
+          if (status === 'active') {
+            // Grant 10,000 credits for active subscription
+            await pool.query(
+              "UPDATE users SET credits = 10000, plan = 'Pro Unlimited' WHERE stripe_customer_id = $1",
+              [subCustomerId]
+            );
+          }
+          break;
+        case 'customer.subscription.deleted':
+          const deletedSub = event.data.object as any;
+          const delCustomerId = deletedSub.customer;
+          // Reset to free plan
+          await pool.query(
+            "UPDATE users SET credits = 5, plan = 'Free Starter' WHERE stripe_customer_id = $1",
+            [delCustomerId]
+          );
+          break;
+        default:
+          console.log(`Unhandled event type: ${event.type}`);
+      }
+
+      res.json({ received: true });
+    } catch (err: any) {
+      console.error(`Webhook Error: ${err.message}`);
+      res.status(400).send(`Webhook Error: ${err.message}`);
     }
   });
 

@@ -41,6 +41,7 @@ CREATE TABLE users (
     credits INT DEFAULT 5,
     plan VARCHAR(50) DEFAULT 'Free Starter',
     is_admin BOOLEAN DEFAULT FALSE,
+    stripe_customer_id VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -72,6 +73,7 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO xml_cleaner_user;
 -- 3. Actualizar Base de Datos Existente (Si ya habías corrido la migración antes)
 -- Si recibes el error "no existe la columna is_admin", corre esto:
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(100);
 
 -- 4. Crear Administrador Inicial
 -- Una vez que te hayas registrado en la web, corre este comando:
