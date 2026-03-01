@@ -21,15 +21,15 @@ sudo apt-get install -y nodejs git
 git init
 git add .
 git commit -m "Initial deploy"
-git remote add origin https://github.com/TU_USUARIO/xml-cleaner-web.git
+git remote add origin https://github.com/DevDanielAlcazar/xmlcleaner.git
 git push -u origin main
 ```
 
 ### En tu servidor Debian:
 1. Clona el repositorio:
 ```bash
-git clone https://github.com/TU_USUARIO/xml-cleaner-web.git
-cd xml-cleaner-web
+git clone https://github.com/DevDanielAlcazar/xmlcleaner.git
+cd xmlcleaner
 ```
 
 2. Instala las dependencias:
@@ -77,7 +77,7 @@ git push origin main
 
 2. **En tu servidor Debian**:
 ```bash
-cd xml-cleaner-web
+cd xmlcleaner
 git pull origin main
 npm install          # Solo si agregaste nuevas librerías
 npm run build        # Reconstruye el frontend
