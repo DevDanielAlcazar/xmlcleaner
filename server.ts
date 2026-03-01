@@ -26,8 +26,9 @@ async function startServer() {
   });
 
   app.get("/api/user/credits", async (req, res) => {
+    const { userId } = req.query;
     try {
-      const result = await pool.query("SELECT credits, plan FROM users LIMIT 1");
+      const result = await pool.query("SELECT credits, plan FROM users WHERE id = $1", [userId]);
       if (result.rows.length > 0) {
         res.json(result.rows[0]);
       } else {
@@ -39,9 +40,11 @@ async function startServer() {
   });
 
   app.get("/api/user/history", async (req, res) => {
+    const { userId } = req.query;
     try {
       const result = await pool.query(
-        "SELECT filename, status, created_at FROM processes ORDER BY created_at DESC LIMIT 10"
+        "SELECT filename, status, created_at FROM processes WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10",
+        [userId]
       );
       res.json(result.rows);
     } catch (err) {
@@ -186,15 +189,51 @@ async function startServer() {
   });
 
   app.post("/api/process/log", async (req, res) => {
-    const { filename, status, warnings } = req.body;
+    const { userId, filename, status, warnings } = req.body;
     try {
-      await pool.query(
-        "INSERT INTO processes (user_id, filename, status, warnings) VALUES ((SELECT id FROM users LIMIT 1), $1, $2, $3)",
-        [filename, status, JSON.stringify(warnings)]
-      );
-      res.json({ success: true });
+      // Start transaction
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        
+        // Insert process log
+        await client.query(
+          "INSERT INTO processes (user_id, filename, status, warnings) VALUES ($1, $2, $3, $4)",
+          [userId, filename, status, JSON.stringify(warnings)]
+        );
+
+        // Decrement credits
+        await client.query(
+          "UPDATE users SET credits = GREATEST(0, credits - 1) WHERE id = $1",
+          [userId]
+        );
+
+        await client.query('COMMIT');
+        res.json({ success: true });
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+      } finally {
+        client.release();
+      }
     } catch (err) {
+      console.error(err);
       res.status(500).json({ error: "Error al registrar proceso" });
+    }
+  });
+
+  app.get("/api/admin/logs", async (req, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT p.*, u.name as user_name, u.plan as user_plan 
+        FROM processes p 
+        JOIN users u ON p.user_id = u.id 
+        ORDER BY p.created_at DESC 
+        LIMIT 50
+      `);
+      res.json(result.rows);
+    } catch (err) {
+      res.status(500).json({ error: "Database error" });
     }
   });
 

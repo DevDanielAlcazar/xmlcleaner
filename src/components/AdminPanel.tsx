@@ -15,6 +15,7 @@ import {
   ChevronRight,
   MoreHorizontal,
   ArrowUpRight,
+  RefreshCw,
   LogOut
 } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -30,6 +31,7 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
     anomalyRate: 0
   });
   const [userList, setUserList] = useState<any[]>([]);
+  const [logs, setLogs] = useState<any[]>([]);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [newCredits, setNewCredits] = useState<number>(0);
 
@@ -39,12 +41,19 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
       .then(data => setUserList(data));
   };
 
+  const fetchLogs = () => {
+    fetch("/api/admin/logs")
+      .then(res => res.json())
+      .then(data => setLogs(data));
+  };
+
   useEffect(() => {
     fetch("/api/admin/metrics")
       .then(res => res.json())
       .then(data => setMetrics(data));
     
     fetchUsers();
+    fetchLogs();
   }, []);
 
   const handleUpdateCredits = async () => {
@@ -308,42 +317,58 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
           </div>
         ) : (
           <div className="rounded-[2rem] bg-[var(--card)] border border-[var(--border)] overflow-hidden">
-            <div className="p-8 border-b border-[var(--border)] flex justify-between items-center">
+            <div className="p-8 border-b border-[var(--border)] flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-lg">System Logs</h3>
-                <p className="text-xs opacity-40">Real-time monitoring of application events.</p>
+                <h2 className="text-xl font-bold mb-1">Logs del Sistema</h2>
+                <p className="text-sm opacity-50">Monitoreo de actividad en tiempo real</p>
               </div>
+              <button onClick={fetchLogs} className="p-2 rounded-full hover:bg-[var(--bg)] transition-colors">
+                <RefreshCw size={18} className="opacity-50" />
+              </button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-[var(--bg)]/50">
-                    <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest opacity-30">{t('initiator')}</th>
-                    <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest opacity-30">{t('eventDetail')}</th>
-                    <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest opacity-30">{t('reference')}</th>
-                    <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest opacity-30">{t('priority')}</th>
-                    <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest opacity-30 text-right">{t('action')}</th>
+                  <tr className="border-b border-[var(--border)] text-[10px] font-bold uppercase tracking-widest opacity-40">
+                    <th className="px-8 py-4">Evento</th>
+                    <th className="px-8 py-4">Usuario</th>
+                    <th className="px-8 py-4">Referencia</th>
+                    <th className="px-8 py-4">Estado</th>
+                    <th className="px-8 py-4">Fecha</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
-                  <LogTableRow 
-                    user="Thomas H. Nielsen" 
-                    tier="ENTERPRISE" 
-                    event="Schema Mismatch" 
-                    detail="Unexpected node <TaxRegistry> in header." 
-                    refId="#XML-902-8812" 
-                    priority={t('moderate')} 
-                    priorityColor="bg-amber-500"
-                  />
-                  <LogTableRow 
-                    user="Sarah Chen" 
-                    tier="BUSINESS" 
-                    event="Timeout Incident" 
-                    detail="Worker reached 30s limit on 45MB stream." 
-                    refId="#XML-771-0023" 
-                    priority={t('critical')} 
-                    priorityColor="bg-rose-500"
-                  />
+                  {logs.map((log) => (
+                    <tr key={log.id} className="text-sm hover:bg-[var(--bg)]/50 transition-colors">
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-2 h-2 rounded-full",
+                            log.status === 'PROCESSED' ? "bg-emerald-500" : "bg-amber-500"
+                          )} />
+                          <span className="font-bold">Procesamiento XML</span>
+                        </div>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex flex-col">
+                          <span className="font-medium">{log.user_name}</span>
+                          <span className="text-[10px] opacity-40 uppercase tracking-tighter">{log.user_plan}</span>
+                        </div>
+                      </td>
+                      <td className="px-8 py-6 font-mono text-xs opacity-60">{log.filename}</td>
+                      <td className="px-8 py-6">
+                        <span className={cn(
+                          "px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter",
+                          log.status === 'PROCESSED' ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500"
+                        )}>
+                          {log.status}
+                        </span>
+                      </td>
+                      <td className="px-8 py-6 opacity-40 text-xs">
+                        {new Date(log.created_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

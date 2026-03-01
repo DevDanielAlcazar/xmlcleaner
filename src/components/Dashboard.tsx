@@ -66,19 +66,21 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
   }, []);
 
   useEffect(() => {
-    fetch("/api/user/credits")
-      .then(res => res.json())
-      .then(data => {
-        setCredits(data.credits);
-        setPlan(data.plan);
-      });
+    if (user?.id) {
+      fetch(`/api/user/credits?userId=${user.id}`)
+        .then(res => res.json())
+        .then(data => {
+          setCredits(data.credits);
+          setPlan(data.plan);
+        });
 
-    // Fetch history
-    fetch("/api/user/history")
-      .then(res => res.json())
-      .then(data => {
-        setHistory(data);
-      });
+      // Fetch history
+      fetch(`/api/user/history?userId=${user.id}`)
+        .then(res => res.json())
+        .then(data => {
+          setHistory(data);
+        });
+    }
 
     // Fetch stats
     fetch("/api/admin/metrics")
@@ -90,7 +92,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
           timeSaved: `~${((data.processedToday || 0) * 5 / 60).toFixed(1)} hrs`
         }));
       });
-  }, []);
+  }, [user]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setFiles(prev => [...prev, ...acceptedFiles]);
@@ -121,6 +123,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          userId: user?.id,
           filename: res.originalName,
           status: res.success ? "PROCESSED" : "ISSUE",
           warnings: res.warnings
