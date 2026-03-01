@@ -69,9 +69,13 @@ CREATE TABLE processes (
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO xml_cleaner_user;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO xml_cleaner_user;
 
--- 3. Crear Administrador Inicial (Opcional)
--- Puedes registrarte normalmente y luego correr este comando con tu correo:
--- UPDATE users SET is_admin = TRUE WHERE email = 'tu@email.com';
+-- 3. Actualizar Base de Datos Existente (Si ya habías corrido la migración antes)
+-- Si recibes el error "no existe la columna is_admin", corre esto:
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
+
+-- 4. Crear Administrador Inicial
+-- Una vez que te hayas registrado en la web, corre este comando:
+-- UPDATE users SET is_admin = TRUE WHERE email = 'dev.daniel.alcazar@gmail.com';
 ```
 
 ## 3. Configuración en el Servicio

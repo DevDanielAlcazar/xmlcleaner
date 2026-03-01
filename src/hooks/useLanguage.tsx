@@ -59,7 +59,11 @@ const translations = {
     moderate: "Moderada",
     critical: "Crítica",
     minor: "Menor",
-    systemHealthy: "Sistema Saludable"
+    systemHealthy: "Sistema Saludable",
+    history: "Historial",
+    billing: "Facturación",
+    preferences: "Preferencias",
+    logout: "Cerrar sesión"
   },
   en: {
     heroTitle: "Clean your XML files",
@@ -117,7 +121,11 @@ const translations = {
     moderate: "Moderate",
     critical: "Critical",
     minor: "Minor",
-    systemHealthy: "System Healthy"
+    systemHealthy: "System Healthy",
+    history: "History",
+    billing: "Billing",
+    preferences: "Preferences",
+    logout: "Log out"
   }
 };
 

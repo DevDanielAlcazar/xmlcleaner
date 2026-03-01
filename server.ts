@@ -38,6 +38,17 @@ async function startServer() {
     }
   });
 
+  app.get("/api/user/history", async (req, res) => {
+    try {
+      const result = await pool.query(
+        "SELECT filename, status, created_at FROM processes ORDER BY created_at DESC LIMIT 10"
+      );
+      res.json(result.rows);
+    } catch (err) {
+      res.status(500).json({ error: "Database error" });
+    }
+  });
+
   app.get("/api/admin/metrics", async (req, res) => {
     try {
       const usersCount = await pool.query("SELECT COUNT(*) FROM users");

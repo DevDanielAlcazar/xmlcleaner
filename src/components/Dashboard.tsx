@@ -31,14 +31,22 @@ import { loadStripe } from "@stripe/stripe-js";
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "");
 
-export default function Dashboard({ user, onAdmin }: { user: any, onAdmin: () => void }) {
+export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAdmin: () => void, onLogout: () => void }) {
   const { t, lang, setLang } = useLanguage();
   const { theme, setTheme } = useTheme();
+  const [activeTab, setActiveTab] = useState<'panel' | 'history' | 'billing' | 'preferences'>('panel');
   const [files, setFiles] = useState<File[]>([]);
   const [results, setResults] = useState<CleanResult[]>([]);
   const [processing, setProcessing] = useState(false);
   const [credits, setCredits] = useState(5);
   const [plan, setPlan] = useState("Free Starter");
+  const [history, setHistory] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    totalCleaned: 0,
+    avgSpeed: "1.2s",
+    timeSaved: "0h",
+    cloudSpace: "0 MB"
+  });
 
   useEffect(() => {
     fetch("/api/user/credits")
@@ -46,6 +54,24 @@ export default function Dashboard({ user, onAdmin }: { user: any, onAdmin: () =>
       .then(data => {
         setCredits(data.credits);
         setPlan(data.plan);
+      });
+
+    // Fetch history
+    fetch("/api/user/history")
+      .then(res => res.json())
+      .then(data => {
+        setHistory(data);
+      });
+
+    // Fetch stats
+    fetch("/api/admin/metrics")
+      .then(res => res.json())
+      .then(data => {
+        setStats(prev => ({
+          ...prev,
+          totalCleaned: data.processedToday || 0,
+          timeSaved: `~${((data.processedToday || 0) * 5 / 60).toFixed(1)} hrs`
+        }));
       });
   }, []);
 
@@ -127,14 +153,22 @@ export default function Dashboard({ user, onAdmin }: { user: any, onAdmin: () =>
       <aside className="w-72 border-r border-[var(--border)] flex flex-col p-6 gap-8">
         <div className="flex items-center gap-2 mb-4">
           <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center text-white font-bold">X</div>
-          <span className="font-display font-bold text-xl tracking-tight">Tranquil<span className="text-brand">XML</span></span>
+          <span className="font-display font-bold text-xl tracking-tight">XMLs <span className="text-brand">PRO</span></span>
         </div>
 
         <nav className="flex-1 space-y-2">
-          <SidebarItem icon={<LayoutDashboard size={20} />} label={t('dashboard')} active />
-          <SidebarItem icon={<History size={20} />} label="History" />
-          <SidebarItem icon={<CreditCard size={20} />} label="Billing" />
-          <SidebarItem icon={<Settings size={20} />} label="Preferences" />
+          <div onClick={() => setActiveTab('panel')}>
+            <SidebarItem icon={<LayoutDashboard size={20} />} label={t('dashboard')} active={activeTab === 'panel'} />
+          </div>
+          <div onClick={() => setActiveTab('history')}>
+            <SidebarItem icon={<History size={20} />} label={t('history')} active={activeTab === 'history'} />
+          </div>
+          <div onClick={() => setActiveTab('billing')}>
+            <SidebarItem icon={<CreditCard size={20} />} label={t('billing')} active={activeTab === 'billing'} />
+          </div>
+          <div onClick={() => setActiveTab('preferences')}>
+            <SidebarItem icon={<Settings size={20} />} label={t('preferences')} active={activeTab === 'preferences'} />
+          </div>
           {user?.isAdmin && (
             <div onClick={onAdmin}>
               <SidebarItem icon={<Terminal size={20} />} label="Admin" />
@@ -163,7 +197,10 @@ export default function Dashboard({ user, onAdmin }: { user: any, onAdmin: () =>
             </button>
           </div>
 
-          <div className="flex items-center gap-3 p-3 rounded-2xl hover:bg-[var(--card)] transition-colors cursor-pointer group">
+          <div 
+            onClick={onLogout}
+            className="flex items-center gap-3 p-3 rounded-2xl hover:bg-[var(--card)] transition-colors cursor-pointer group"
+          >
             <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center text-brand font-bold">
               {(user?.name || 'U').split(' ').map((n: any) => n[0]).join('')}
             </div>
@@ -204,135 +241,226 @@ export default function Dashboard({ user, onAdmin }: { user: any, onAdmin: () =>
         </header>
 
         <div className="grid grid-cols-3 gap-8">
-          {/* Upload Area */}
-          <div className="col-span-2 space-y-8">
-            <div 
-              {...getRootProps()} 
-              className={cn(
-                "aspect-[2/1] rounded-[2.5rem] border-2 border-dashed flex flex-col items-center justify-center p-12 transition-all cursor-pointer",
-                isDragActive ? "border-brand bg-brand/5 scale-[0.99]" : "border-[var(--border)] bg-[var(--card)] hover:border-brand/50"
-              )}
-            >
-              <input {...getInputProps()} />
-              <div className="w-16 h-16 rounded-3xl bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center text-brand mb-6 shadow-sm">
-                <Upload size={32} />
-              </div>
-              <h3 className="text-2xl font-display font-bold mb-2">{t('selectFile')}</h3>
-              <p className="opacity-40 text-sm text-center max-w-xs">{t('dropFiles')}</p>
-              <p className="mt-8 text-xs font-bold opacity-20 uppercase tracking-widest">{t('maxSize')}</p>
-            </div>
-
-            {files.length > 0 && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]"
-              >
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="font-bold">Pending Files ({files.length})</h3>
-                  <button 
-                    onClick={handleProcess}
-                    disabled={processing || credits < files.length}
-                    className="bg-brand text-white px-6 py-2 rounded-full text-sm font-bold disabled:opacity-50 flex items-center gap-2"
-                  >
-                    {processing ? <Zap size={16} className="animate-spin" /> : <Zap size={16} />}
-                    {t('cleanNow')}
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {files.map((f, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg)] border border-[var(--border)]">
-                      <div className="flex items-center gap-3">
-                        <FileText size={18} className="opacity-30" />
-                        <span className="text-sm font-medium">{f.name}</span>
-                      </div>
-                      <span className="text-xs opacity-30">{(f.size / 1024).toFixed(1)} KB</span>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {results.length > 0 && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-8 rounded-[2.5rem] bg-brand text-white"
-              >
-                <div className="flex justify-between items-center mb-8">
-                  <div>
-                    <h3 className="text-2xl font-display font-bold">{t('batchResults')}</h3>
-                    <p className="text-sm opacity-70">{t('integrityCheck')}</p>
+          {activeTab === 'panel' ? (
+            <>
+              {/* Upload Area */}
+              <div className="col-span-2 space-y-8">
+                <div 
+                  {...getRootProps()} 
+                  className={cn(
+                    "aspect-[2/1] rounded-[2.5rem] border-2 border-dashed flex flex-col items-center justify-center p-12 transition-all cursor-pointer",
+                    isDragActive ? "border-brand bg-brand/5 scale-[0.99]" : "border-[var(--border)] bg-[var(--card)] hover:border-brand/50"
+                  )}
+                >
+                  <input {...getInputProps()} />
+                  <div className="w-16 h-16 rounded-3xl bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center text-brand mb-6 shadow-sm">
+                    <Upload size={32} />
                   </div>
-                  <button 
-                    onClick={downloadZip}
-                    className="bg-white text-brand px-6 py-3 rounded-full text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform"
+                  <h3 className="text-2xl font-display font-bold mb-2">{t('selectFile')}</h3>
+                  <p className="opacity-40 text-sm text-center max-w-xs">{t('dropFiles')}</p>
+                  <p className="mt-8 text-xs font-bold opacity-20 uppercase tracking-widest">{t('maxSize')}</p>
+                </div>
+
+                {files.length > 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]"
                   >
-                    <Download size={18} />
-                    {t('exportAll')}
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="font-bold">Pending Files ({files.length})</h3>
+                      <button 
+                        onClick={handleProcess}
+                        disabled={processing || credits < files.length}
+                        className="bg-brand text-white px-6 py-2 rounded-full text-sm font-bold disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {processing ? <Zap size={16} className="animate-spin" /> : <Zap size={16} />}
+                        {t('cleanNow')}
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {files.map((f, i) => (
+                        <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg)] border border-[var(--border)]">
+                          <div className="flex items-center gap-3">
+                            <FileText size={18} className="opacity-30" />
+                            <span className="text-sm font-medium">{f.name}</span>
+                          </div>
+                          <span className="text-xs opacity-30">{(f.size / 1024).toFixed(1)} KB</span>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+
+                {results.length > 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-8 rounded-[2.5rem] bg-brand text-white"
+                  >
+                    <div className="flex justify-between items-center mb-8">
+                      <div>
+                        <h3 className="text-2xl font-display font-bold">{t('batchResults')}</h3>
+                        <p className="text-sm opacity-70">{t('integrityCheck')}</p>
+                      </div>
+                      <button 
+                        onClick={downloadZip}
+                        className="bg-white text-brand px-6 py-3 rounded-full text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform"
+                      >
+                        <Download size={18} />
+                        {t('exportAll')}
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-4 mb-8">
+                      <StatCard label="Cleaned" value={results.filter(r => r.success).length} />
+                      <StatCard label="Exceptions" value={results.filter(r => !r.success).length} />
+                      <StatCard label="Efficiency" value="100%" />
+                    </div>
+
+                    <div className="space-y-2">
+                      {results.slice(0, 3).map((r, i) => (
+                        <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/10 border border-white/20">
+                          <div className="flex items-center gap-3">
+                            {r.success ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+                            <span className="text-sm font-medium">{r.originalName}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            {r.warnings.slice(0, 1).map((w, j) => (
+                              <span key={j} className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full uppercase font-bold tracking-wider">{w}</span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Stats & Info */}
+              <div className="space-y-8">
+                <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
+                  <div className="flex items-center gap-2 mb-8">
+                    <Clock size={20} className="opacity-30" />
+                    <h3 className="font-bold">{t('recentActivity')}</h3>
+                  </div>
+                  <div className="space-y-6">
+                    {history.length > 0 ? history.slice(0, 3).map((item, i) => (
+                      <ActivityItem 
+                        key={i} 
+                        label={item.filename || 'Unknown'} 
+                        time={new Date(item.created_at).toLocaleDateString() + ' • ' + new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
+                        status={item.status || 'UNKNOWN'} 
+                      />
+                    )) : (
+                      <p className="text-xs opacity-30 text-center py-4">No activity yet</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
+                  <div className="flex items-center gap-2 mb-8">
+                    <Zap size={20} className="opacity-30" />
+                    <h3 className="font-bold">{t('performance')}</h3>
+                  </div>
+                  <div className="space-y-4">
+                    <PerformanceItem label={t('totalCleaned')} value={stats.totalCleaned.toString()} />
+                    <PerformanceItem label={t('avgSpeed')} value={stats.avgSpeed} />
+                    <PerformanceItem label="Time Saved" value={stats.timeSaved} />
+                    <PerformanceItem label={t('cloudSpace')} value={stats.cloudSpace} />
+                  </div>
+                </div>
+
+                <div className="p-6 rounded-3xl bg-amber-50 border border-amber-100 flex gap-4">
+                  <AlertCircle className="text-amber-500 shrink-0" />
+                  <p className="text-xs text-amber-800 leading-relaxed">
+                    <span className="font-bold block mb-1">Retention Policy</span>
+                    {t('retentionPolicy')}
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : activeTab === 'history' ? (
+            <div className="col-span-3 p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
+              <h2 className="text-2xl font-display font-bold mb-8">{t('history')}</h2>
+              <div className="space-y-4">
+                {history.length > 0 ? history.map((item, i) => (
+                  <ActivityItem 
+                    key={i} 
+                    label={item.filename || 'Unknown'} 
+                    time={new Date(item.created_at).toLocaleDateString() + ' • ' + new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
+                    status={item.status || 'UNKNOWN'} 
+                  />
+                )) : (
+                  <p className="text-sm opacity-30 text-center py-12">Your processing history will appear here.</p>
+                )}
+              </div>
+            </div>
+          ) : activeTab === 'billing' ? (
+            <div className="col-span-3 p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
+              <h2 className="text-2xl font-display font-bold mb-8">{t('billing')}</h2>
+              <div className="grid grid-cols-2 gap-8">
+                <div className="p-8 rounded-3xl bg-brand text-white">
+                  <p className="text-sm opacity-70 mb-2">Current Plan</p>
+                  <h3 className="text-3xl font-display font-bold mb-6">{plan}</h3>
+                  <div className="flex justify-between items-center p-4 rounded-2xl bg-white/10 border border-white/20">
+                    <span className="text-sm">Credits Remaining</span>
+                    <span className="text-xl font-bold">{credits}</span>
+                  </div>
+                </div>
+                <div className="p-8 rounded-3xl border border-[var(--border)] bg-[var(--bg)]">
+                  <h4 className="font-bold mb-4">Upgrade your plan</h4>
+                  <p className="text-sm opacity-50 mb-6">Get unlimited credits and priority processing for your entire team.</p>
+                  <button 
+                    onClick={handleUpgrade}
+                    className="w-full py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20"
+                  >
+                    {t('expand')}
                   </button>
                 </div>
-                
-                <div className="grid grid-cols-3 gap-4 mb-8">
-                  <StatCard label="Cleaned" value={results.filter(r => r.success).length} />
-                  <StatCard label="Exceptions" value={results.filter(r => !r.success).length} />
-                  <StatCard label="Efficiency" value="100%" />
+              </div>
+            </div>
+          ) : (
+            <div className="col-span-3 p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
+              <h2 className="text-2xl font-display font-bold mb-8">{t('preferences')}</h2>
+              <div className="max-w-md space-y-8">
+                <div>
+                  <label className="block text-sm font-bold mb-4 opacity-50 uppercase tracking-widest">Language</label>
+                  <div className="flex gap-4">
+                    <button 
+                      onClick={() => setLang('es')}
+                      className={cn("flex-1 py-4 rounded-2xl border border-[var(--border)] font-bold transition-all", lang === 'es' ? "bg-brand text-white border-brand" : "bg-[var(--bg)]")}
+                    >
+                      Español
+                    </button>
+                    <button 
+                      onClick={() => setLang('en')}
+                      className={cn("flex-1 py-4 rounded-2xl border border-[var(--border)] font-bold transition-all", lang === 'en' ? "bg-brand text-white border-brand" : "bg-[var(--bg)]")}
+                    >
+                      English
+                    </button>
+                  </div>
                 </div>
-
-                <div className="space-y-2">
-                  {results.slice(0, 3).map((r, i) => (
-                    <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/10 border border-white/20">
-                      <div className="flex items-center gap-3">
-                        {r.success ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-                        <span className="text-sm font-medium">{r.originalName}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        {r.warnings.slice(0, 1).map((w, j) => (
-                          <span key={j} className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full uppercase font-bold tracking-wider">{w}</span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                <div>
+                  <label className="block text-sm font-bold mb-4 opacity-50 uppercase tracking-widest">Appearance</label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <button onClick={() => setTheme('day')} className={cn("py-4 rounded-2xl border border-[var(--border)] flex flex-col items-center gap-2", theme === 'day' && "border-brand bg-brand/5 text-brand")}>
+                      <Sun size={20} />
+                      <span className="text-xs font-bold">{t('day')}</span>
+                    </button>
+                    <button onClick={() => setTheme('afternoon')} className={cn("py-4 rounded-2xl border border-[var(--border)] flex flex-col items-center gap-2", theme === 'afternoon' && "border-brand bg-brand/5 text-amber-600")}>
+                      <Sunset size={20} />
+                      <span className="text-xs font-bold">{t('afternoon')}</span>
+                    </button>
+                    <button onClick={() => setTheme('night')} className={cn("py-4 rounded-2xl border border-[var(--border)] flex flex-col items-center gap-2", theme === 'night' && "border-brand bg-brand/5 text-blue-600")}>
+                      <Moon size={20} />
+                      <span className="text-xs font-bold">{t('night')}</span>
+                    </button>
+                  </div>
                 </div>
-              </motion.div>
-            )}
-          </div>
-
-          {/* Stats & Info */}
-          <div className="space-y-8">
-            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
-              <div className="flex items-center gap-2 mb-8">
-                <Clock size={20} className="opacity-30" />
-                <h3 className="font-bold">{t('recentActivity')}</h3>
-              </div>
-              <div className="space-y-6">
-                <ActivityItem label="factura_enero_2024.xml" time="Oct 24 • 14:20" status="PROCESSED" />
-                <ActivityItem label="batch_process_092.zip" time="Oct 24 • 11:05" status="PROCESSED" />
-                <ActivityItem label="invalid_header_test.xml" time="Oct 23 • 16:45" status="ISSUE" />
               </div>
             </div>
-
-            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
-              <div className="flex items-center gap-2 mb-8">
-                <Zap size={20} className="opacity-30" />
-                <h3 className="font-bold">{t('performance')}</h3>
-              </div>
-              <div className="space-y-4">
-                <PerformanceItem label={t('totalCleaned')} value="42" />
-                <PerformanceItem label={t('avgSpeed')} value="1.2s" />
-                <PerformanceItem label="Time Saved" value="~3.5 hrs" />
-                <PerformanceItem label={t('cloudSpace')} value="12.5 MB" />
-              </div>
-            </div>
-
-            <div className="p-6 rounded-3xl bg-amber-50 border border-amber-100 flex gap-4">
-              <AlertCircle className="text-amber-500 shrink-0" />
-              <p className="text-xs text-amber-800 leading-relaxed">
-                <span className="font-bold block mb-1">Retention Policy</span>
-                {t('retentionPolicy')}
-              </p>
-            </div>
-          </div>
+          )}
         </div>
       </main>
     </div>
@@ -360,7 +488,14 @@ function StatCard({ label, value }: { label: string, value: string | number }) {
   );
 }
 
-function ActivityItem({ label, time, status }: { label: string, time: string, status: string }) {
+interface ActivityItemProps {
+  label: string;
+  time: string;
+  status: string;
+  key?: any;
+}
+
+function ActivityItem({ label, time, status }: ActivityItemProps) {
   return (
     <div className="flex items-center justify-between group cursor-pointer">
       <div className="flex items-center gap-3">

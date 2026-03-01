@@ -72,7 +72,7 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
       <nav className="max-w-7xl mx-auto px-6 py-8 flex items-center justify-between relative z-10">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center text-white font-bold">X</div>
-          <span className="font-display font-bold text-xl tracking-tight">XML Cleaner<span className="text-brand">Web</span></span>
+          <span className="font-display font-bold text-xl tracking-tight">XMLs <span className="text-brand">PRO</span></span>
         </div>
         
         <div className="hidden md:flex items-center gap-8 text-sm font-medium opacity-70">
@@ -323,7 +323,7 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
           <div className="col-span-2">
             <div className="flex items-center gap-2 mb-6">
               <div className="w-6 h-6 bg-brand rounded flex items-center justify-center text-white text-xs font-bold">X</div>
-              <span className="font-display font-bold text-lg tracking-tight">XML Cleaner</span>
+              <span className="font-display font-bold text-lg tracking-tight">XMLs PRO</span>
             </div>
             <p className="opacity-50 max-w-sm text-sm leading-relaxed">
               {t('footerDesc')}
@@ -347,7 +347,7 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-6 mt-20 pt-8 border-t border-[var(--border)] flex justify-between items-center text-xs opacity-30 font-medium">
-          <span>© 2026 XML Cleaner Web. {t('rights')}</span>
+          <span>© 2026 XMLs PRO. {t('rights')}</span>
           <div className="flex gap-6">
             <span>Twitter</span>
             <span>LinkedIn</span>

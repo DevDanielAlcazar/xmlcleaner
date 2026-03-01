@@ -26,6 +26,10 @@ export default function App() {
           <Dashboard 
             user={user}
             onAdmin={() => setView('admin')} 
+            onLogout={() => {
+              setUser(null);
+              setView('landing');
+            }}
           />
         ) : (
           <AdminPanel onBack={() => setView('admin')} />

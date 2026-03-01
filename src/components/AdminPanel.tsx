@@ -43,7 +43,7 @@ export default function AdminPanel({ onBack }: { onBack: () => void }) {
           <div className="w-10 h-10 bg-[var(--text)] rounded-xl flex items-center justify-center text-[var(--bg)]">
             <Terminal size={20} />
           </div>
-          <span className="font-display font-bold text-lg tracking-tight">ZenAdmin</span>
+          <span className="font-display font-bold text-lg tracking-tight">XMLs PRO Admin</span>
         </div>
 
         <nav className="flex-1 space-y-1">
