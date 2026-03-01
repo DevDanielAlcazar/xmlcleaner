@@ -47,6 +47,23 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
     timeSaved: "0h",
     cloudSpace: "0 MB"
   });
+  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success')) {
+      setNotification({ type: 'success', message: '¡Suscripción activada con éxito! Tus créditos se actualizarán en breve.' });
+    } else if (params.get('canceled')) {
+      setNotification({ type: 'error', message: 'El proceso de pago fue cancelado.' });
+    }
+    
+    // Clear notification after 5 seconds
+    if (params.get('success') || params.get('canceled')) {
+      setTimeout(() => setNotification(null), 5000);
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     fetch("/api/user/credits")
@@ -135,7 +152,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
       const response = await fetch("/api/billing/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: priceId || "prod_U43LrYqn5TkmSx" }),
+        body: JSON.stringify({ planId: priceId || "price_1T5vEpE2HOY0nwdF4XTuqzN8" }),
       });
       const session = await response.json();
       if (session.url) {
@@ -214,6 +231,23 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
 
       {/* Main Content */}
       <main className="flex-1 p-12 overflow-y-auto">
+        <AnimatePresence>
+          {notification && (
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className={cn(
+                "mb-8 p-4 rounded-2xl border flex items-center gap-3 font-bold text-sm",
+                notification.type === 'success' ? "bg-emerald-50 border-emerald-100 text-emerald-600" : "bg-rose-50 border-rose-100 text-rose-600"
+              )}
+            >
+              {notification.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+              {notification.message}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <header className="flex justify-between items-start mb-12">
           <div>
             <h1 className="text-4xl font-display font-bold tracking-tight mb-2">Good afternoon, {user?.name || 'User'}</h1>
@@ -413,7 +447,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                     <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Sin anuncios</li>
                   </ul>
                   <button 
-                    onClick={() => handleUpgrade("prod_U43LrYqn5TkmSx")}
+                    onClick={() => handleUpgrade("price_1T5vEpE2HOY0nwdF4XTuqzN8")}
                     className="w-full py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] transition-transform"
                   >
                     Suscribirse Mensual
@@ -435,7 +469,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                     <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Acceso anticipado a funciones</li>
                   </ul>
                   <button 
-                    onClick={() => handleUpgrade("prod_U43LoAXN0Bdcj7")}
+                    onClick={() => handleUpgrade("price_1T5vEpE2HOY0nwdFIlpwJm2s")}
                     className="w-full py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] transition-transform"
                   >
                     Suscribirse Anual
