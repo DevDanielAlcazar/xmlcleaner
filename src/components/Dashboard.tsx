@@ -212,8 +212,8 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
               />
             </div>
             <button 
-              onClick={handleUpgrade}
-              className="w-full py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs font-bold hover:bg-[var(--border)] transition-colors"
+              onClick={() => setActiveTab('billing')}
+              className="w-full py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs font-bold hover:bg-[var(--bg)]/80 transition-colors"
             >
               {t('expand')}
             </button>
@@ -448,9 +448,10 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                     <span className="text-2xl font-display font-bold">$29<span className="text-sm opacity-50">/mes</span></span>
                   </div>
                   <ul className="space-y-3 mb-8 flex-1">
-                    <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Créditos ilimitados</li>
+                    <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Créditos ilimitados (10,000)</li>
+                    <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Reparación Total</li>
+                    <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Alertas Inteligentes</li>
                     <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Soporte prioritario</li>
-                    <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Sin anuncios</li>
                   </ul>
                   <button 
                     onClick={() => handleUpgrade("price_1T5vEpE2HOY0nwdF4XTuqzN8")}
@@ -461,11 +462,11 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                 </div>
 
                 <div className="p-8 rounded-3xl border-2 border-brand bg-brand/5 flex flex-col relative overflow-hidden">
-                  <div className="absolute top-4 right-4 bg-brand text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-widest">Ahorra 20%</div>
+                  <div className="absolute top-4 right-4 bg-brand text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-widest">Ahorra 2 meses</div>
                   <div className="flex justify-between items-start mb-6">
                     <div>
                       <h3 className="text-xl font-bold mb-1">Plan Anual</h3>
-                      <p className="text-sm opacity-50">Ahorras dos meses con las mismas capacidades ilimitadas</p>
+                      <p className="text-sm opacity-50">Ahorras dos meses con las mismas capacidades</p>
                     </div>
                     <span className="text-2xl font-display font-bold">$290<span className="text-sm opacity-50">/año</span></span>
                   </div>

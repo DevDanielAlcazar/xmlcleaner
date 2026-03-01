@@ -75,9 +75,9 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
         </div>
         
         <div className="hidden md:flex items-center gap-8 text-sm font-medium opacity-70">
-          <a href="#features" className="hover:opacity-100 transition-opacity">{t('features')}</a>
-          <a href="#how" className="hover:opacity-100 transition-opacity">{t('howItWorks')}</a>
-          <a href="#pricing" className="hover:opacity-100 transition-opacity">{t('pricing')}</a>
+          <a href="#features" className="hover:opacity-100 transition-opacity">Características</a>
+          <a href="#how" className="hover:opacity-100 transition-opacity">Cómo funciona</a>
+          <a href="#pricing" className="hover:opacity-100 transition-opacity">Precios</a>
         </div>
 
         <div className="flex items-center gap-4">
@@ -308,7 +308,12 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ delay: 0.5, type: "spring", damping: 20 }}
           className="mt-32 relative mx-auto max-w-6xl"
+          id="features"
         >
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-display font-bold mb-4">Características Principales</h2>
+            <p className="opacity-50 max-w-2xl mx-auto">Tecnología de punta para el manejo de tus comprobantes fiscales.</p>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
               <div className="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mb-6">
@@ -345,6 +350,75 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
           <div className="absolute -top-20 -right-20 w-64 h-64 bg-brand/10 rounded-full blur-[100px] -z-10" />
           <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-amber-500/10 rounded-full blur-[100px] -z-10" />
         </motion.div>
+
+        {/* How it works */}
+        <section id="how" className="mt-48">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-display font-bold mb-4">Cómo Funciona</h2>
+            <p className="opacity-50 max-w-2xl mx-auto">Tres simples pasos para tener tus XML listos.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            {[
+              { step: "01", title: "Sube tus archivos", desc: "Arrastra tus XML o archivos ZIP directamente a la plataforma." },
+              { step: "02", title: "Procesamiento IA", desc: "Nuestro motor analiza y repara errores de formato y caracteres ilegales." },
+              { step: "03", title: "Descarga Directa", desc: "Obtén tus archivos limpios y listos para ser procesados por cualquier sistema." }
+            ].map((s, i) => (
+              <div key={i} className="relative group">
+                <div className="text-8xl font-display font-bold opacity-5 absolute -top-12 -left-4 group-hover:text-brand transition-colors">{s.step}</div>
+                <h4 className="text-xl font-bold mb-4 relative z-10">{s.title}</h4>
+                <p className="text-sm opacity-60 leading-relaxed relative z-10">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Pricing */}
+        <section id="pricing" className="mt-48">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-display font-bold mb-4">Planes y Precios</h2>
+            <p className="opacity-50 max-w-2xl mx-auto">Elige el plan que mejor se adapte a tus necesidades.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Free */}
+            <div className="p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] flex flex-col">
+              <h3 className="text-xl font-bold mb-2">Free Starter</h3>
+              <div className="text-4xl font-display font-bold mb-6">$0 <span className="text-sm opacity-40 font-sans">MXN</span></div>
+              <ul className="space-y-4 mb-10 flex-1">
+                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> 5 créditos incluidos</li>
+                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> 5 XMLs gratis</li>
+                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Reparación básica</li>
+              </ul>
+              <button onClick={() => setAuthMode('register')} className="w-full py-4 rounded-2xl border border-[var(--border)] font-bold hover:bg-[var(--bg)] transition-colors">Empezar ahora</button>
+            </div>
+
+            {/* Monthly */}
+            <div className="p-10 rounded-[2.5rem] bg-[var(--card)] border-2 border-brand flex flex-col relative">
+              <div className="absolute top-6 right-6 bg-brand text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">Popular</div>
+              <h3 className="text-xl font-bold mb-2">Pro Mensual</h3>
+              <div className="text-4xl font-display font-bold mb-6">$29 <span className="text-sm opacity-40 font-sans">MXN / mes</span></div>
+              <ul className="space-y-4 mb-10 flex-1">
+                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Créditos Ilimitados (10k)</li>
+                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Reparación Total</li>
+                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Alertas Inteligentes</li>
+                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Soporte Prioritario</li>
+              </ul>
+              <button onClick={() => setAuthMode('register')} className="w-full py-4 rounded-2xl bg-brand text-white font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] transition-transform">Suscribirse</button>
+            </div>
+
+            {/* Annual */}
+            <div className="p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] flex flex-col">
+              <h3 className="text-xl font-bold mb-2">Pro Anual</h3>
+              <div className="text-4xl font-display font-bold mb-2">$290 <span className="text-sm opacity-40 font-sans">MXN / año</span></div>
+              <div className="text-xs font-bold text-emerald-500 mb-6 uppercase tracking-widest">Ahorra 2 meses</div>
+              <ul className="space-y-4 mb-10 flex-1">
+                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Todo lo del plan mensual</li>
+                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> 2 meses de regalo</li>
+                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Facturación anual</li>
+              </ul>
+              <button onClick={() => setAuthMode('register')} className="w-full py-4 rounded-2xl border border-[var(--border)] font-bold hover:bg-[var(--bg)] transition-colors">Suscribirse</button>
+            </div>
+          </div>
+        </section>
       </main>
 
       <footer className="border-t border-[var(--border)] py-20">
@@ -359,11 +433,11 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
             </p>
           </div>
           <div>
-            <h4 className="font-bold text-sm mb-6 uppercase tracking-widest opacity-30">Product</h4>
+            <h4 className="font-bold text-sm mb-6 uppercase tracking-widest opacity-30">Producto</h4>
             <ul className="space-y-4 text-sm font-medium opacity-60">
-              <li>{t('features')}</li>
-              <li>{t('pricing')}</li>
-              <li>{t('howItWorks')}</li>
+              <li><a href="#features" className="hover:text-brand transition-colors">Características</a></li>
+              <li><a href="#pricing" className="hover:text-brand transition-colors">Precios</a></li>
+              <li><a href="#how" className="hover:text-brand transition-colors">Cómo funciona</a></li>
             </ul>
           </div>
           <div>

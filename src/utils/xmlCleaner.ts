@@ -60,12 +60,18 @@ function validateStructure(text: string, warnings: string[]): void {
         warnings.push(`RFC del Emisor parece tener un formato inválido: ${rfcEmisor}`);
       }
 
-      const requiredAttrs = ["Version", "Fecha", "Sello", "NoCertificado", "Certificado", "SubTotal", "Moneda", "Total", "TipoDeComprobante", "LugarExpedicion"];
+      const requiredAttrs = ["Version", "Fecha", "Sello", "NoCertificado", "Certificado", "SubTotal", "Moneda", "Total", "TipoDeComprobante", "Exportacion", "LugarExpedicion"];
       requiredAttrs.forEach(attr => {
         if (!root.hasAttribute(attr)) {
           warnings.push(`Atributo CFDI obligatorio faltante: ${attr}`);
         }
       });
+
+      // Sello validation (length check)
+      const sello = root.getAttribute("Sello");
+      if (sello && sello.length < 100) {
+        warnings.push("El Sello fiscal parece estar truncado o es demasiado corto.");
+      }
 
       const requiredNodes = ["Emisor", "Receptor", "Conceptos"];
       requiredNodes.forEach(node => {
@@ -78,14 +84,27 @@ function validateStructure(text: string, warnings: string[]): void {
           if (node === "Emisor") {
             if (!el.hasAttribute("RegimenFiscal")) warnings.push("Emisor: Falta atributo 'RegimenFiscal' (Requerido en 4.0)");
             if (!el.hasAttribute("Nombre")) warnings.push("Emisor: Falta atributo 'Nombre' (Requerido en 4.0)");
+            const rfc = el.getAttribute("Rfc");
+            if (rfc === "XAXX010101000" || rfc === "XEXX010101000") {
+              warnings.push("Emisor: Se está usando un RFC genérico.");
+            }
           }
           if (node === "Receptor") {
             if (!el.hasAttribute("UsoCFDI")) warnings.push("Receptor: Falta atributo 'UsoCFDI' (Requerido en 4.0)");
             if (!el.hasAttribute("RegimenFiscalReceptor")) warnings.push("Receptor: Falta atributo 'RegimenFiscalReceptor' (Requerido en 4.0)");
             if (!el.hasAttribute("DomicilioFiscalReceptor")) warnings.push("Receptor: Falta atributo 'DomicilioFiscalReceptor' (Requerido en 4.0)");
+            if (!el.hasAttribute("Nombre")) warnings.push("Receptor: Falta atributo 'Nombre' (Requerido en 4.0)");
           }
         }
       });
+
+      // Check for TimbreFiscalDigital
+      const tfd = xmlDoc.getElementsByTagNameNS("*", "TimbreFiscalDigital")[0];
+      if (!tfd) {
+        warnings.push("No se encontró el nodo TimbreFiscalDigital. El XML podría no estar timbrado.");
+      } else {
+        if (!tfd.hasAttribute("UUID")) warnings.push("TimbreFiscalDigital: Falta el folio fiscal (UUID).");
+      }
     }
   } catch (err) {
     warnings.push("No se pudo realizar la validación estructural avanzada.");
