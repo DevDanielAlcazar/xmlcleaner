@@ -68,15 +68,47 @@ function validateStructure(text: string, warnings: string[]): void {
           warnings.push(`Formato de Fecha inválido: ${fecha}. Debe ser AAAA-MM-DDThh:mm:ss`);
         }
 
-        // Totals validation
+        // Totals and Tax validation
         const subtotal = parseFloat(root.getAttribute("SubTotal") || "0");
         const total = parseFloat(root.getAttribute("Total") || "0");
         const descuento = parseFloat(root.getAttribute("Descuento") || "0");
         
-        // Simple check: Total should be roughly Subtotal - Descuento + Impuestos
-        // We can't be 100% sure without parsing all taxes, but we can flag if Total < Subtotal - Descuento
-        if (total < (subtotal - descuento) - 0.01) {
-          warnings.push("Alerta: El Total es menor al Subtotal menos Descuento. Verifique los importes.");
+        // Line item validation
+        const conceptos = xmlDoc.getElementsByTagNameNS("*", "Concepto");
+        let calculatedSubtotal = 0;
+        for (let i = 0; i < conceptos.length; i++) {
+          const importe = parseFloat(conceptos[i].getAttribute("Importe") || "0");
+          calculatedSubtotal += importe;
+        }
+
+        if (Math.abs(calculatedSubtotal - subtotal) > 0.1) {
+          warnings.push(`Cálculo: La suma de conceptos ($${calculatedSubtotal.toFixed(2)}) no coincide con el SubTotal ($${subtotal.toFixed(2)}).`);
+        }
+
+        // Tax validation
+        const impuestosNode = xmlDoc.getElementsByTagNameNS("*", "Impuestos");
+        let totalTraslados = 0;
+        let totalRetenciones = 0;
+
+        // Usually the last Impuestos node at root level is the summary
+        const rootImpuestos = Array.from(impuestosNode).find(node => node.parentNode === root);
+        if (rootImpuestos) {
+          totalTraslados = parseFloat(rootImpuestos.getAttribute("TotalImpuestosTrasladados") || "0");
+          totalRetenciones = parseFloat(rootImpuestos.getAttribute("TotalImpuestosRetenidos") || "0");
+        }
+
+        const expectedTotal = subtotal - descuento + totalTraslados - totalRetenciones;
+        if (Math.abs(expectedTotal - total) > 0.1) {
+          warnings.push(`Cálculo: El Total ($${total.toFixed(2)}) no coincide con la suma de Subtotal, Descuento e Impuestos ($${expectedTotal.toFixed(2)}).`);
+        }
+
+        // Check for common tax rates
+        const traslados = xmlDoc.getElementsByTagNameNS("*", "Traslado");
+        for (let i = 0; i < traslados.length; i++) {
+          const tasaOCuota = traslados[i].getAttribute("TasaOCuota");
+          if (tasaOCuota && !["0.160000", "0.080000", "0.000000"].includes(tasaOCuota)) {
+            warnings.push(`Impuestos: Tasa de traslado inusual detectada: ${tasaOCuota}. Verifique si es correcta.`);
+          }
         }
 
         const rfcEmisor = xmlDoc.getElementsByTagNameNS("*", "Emisor")[0]?.getAttribute("Rfc");

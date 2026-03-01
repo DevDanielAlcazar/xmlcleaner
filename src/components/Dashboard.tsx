@@ -21,7 +21,9 @@ import {
   Sunset,
   Moon,
   Globe,
-  Terminal
+  Terminal,
+  Search,
+  X
 } from "lucide-react";
 import { cn } from "../utils/cn";
 import { cleanXML, CleanResult } from "../utils/xmlCleaner";
@@ -37,6 +39,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
   const [activeTab, setActiveTab] = useState<'panel' | 'history' | 'billing' | 'preferences'>('panel');
   const [files, setFiles] = useState<File[]>([]);
   const [results, setResults] = useState<CleanResult[]>([]);
+  const [selectedResult, setSelectedResult] = useState<CleanResult | null>(null);
   const [processing, setProcessing] = useState(false);
   const [credits, setCredits] = useState(5);
   const [plan, setPlan] = useState("Free Starter");
@@ -357,23 +360,35 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                       <StatCard label="Efficiency" value={`${Math.round((results.filter(r => r.success && !r.warnings.some(w => w.toLowerCase().includes("error") || w.toLowerCase().includes("alerta"))).length / results.length) * 100)}%`} />
                     </div>
 
-                    <div className="space-y-2">
-                      {results.slice(0, 3).map((r, i) => (
-                        <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/10 border border-white/20">
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                      {results.map((r, i) => (
+                        <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/10 border border-white/20 hover:bg-white/20 transition-colors">
                           <div className="flex items-center gap-3">
                             {!r.success ? (
                               <AlertCircle size={18} className="text-rose-500" />
-                            ) : r.warnings.some(w => w.toLowerCase().includes("error") || w.toLowerCase().includes("alerta") || w.toLowerCase().includes("faltante")) ? (
+                            ) : r.warnings.some(w => w.toLowerCase().includes("error") || w.toLowerCase().includes("alerta") || w.toLowerCase().includes("faltante") || w.toLowerCase().includes("cálculo")) ? (
                               <AlertCircle size={18} className="text-amber-500" />
                             ) : (
                               <CheckCircle2 size={18} className="text-emerald-500" />
                             )}
-                            <span className="text-sm font-medium">{r.originalName}</span>
+                            <span className="text-sm font-medium truncate max-w-[200px]">{r.originalName}</span>
                           </div>
-                          <div className="flex flex-wrap gap-2 justify-end max-w-[50%]">
-                            {r.warnings.map((w, j) => (
-                              <span key={j} className="text-[10px] bg-white/20 px-2 py-1 rounded-lg uppercase font-bold tracking-wider leading-tight text-right">{w}</span>
-                            ))}
+                          <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap gap-1 justify-end max-w-[150px]">
+                              {r.warnings.slice(0, 1).map((w, j) => (
+                                <span key={j} className="text-[9px] bg-white/20 px-2 py-0.5 rounded-md uppercase font-bold tracking-wider truncate max-w-full">{w}</span>
+                              ))}
+                              {r.warnings.length > 1 && (
+                                <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded-md font-bold">+{r.warnings.length - 1}</span>
+                              )}
+                            </div>
+                            <button 
+                              onClick={() => setSelectedResult(r)}
+                              className="p-2 rounded-lg bg-white/10 hover:bg-white/30 transition-colors"
+                              title="Ver detalles"
+                            >
+                              <Search size={14} />
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -533,6 +548,94 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
           )}
         </div>
       </main>
+
+      {/* Details Modal */}
+      <AnimatePresence>
+        {selectedResult && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedResult(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-2xl bg-[var(--card)] rounded-[2.5rem] border border-[var(--border)] shadow-2xl overflow-hidden"
+            >
+              <div className="p-8 border-b border-[var(--border)] flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <div className={cn(
+                    "w-12 h-12 rounded-2xl flex items-center justify-center",
+                    selectedResult.success ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                  )}>
+                    {selectedResult.success ? <CheckCircle2 size={24} /> : <AlertCircle size={24} />}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold">{selectedResult.originalName}</h3>
+                    <p className="text-xs opacity-40">Detalles del procesamiento y validación</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSelectedResult(null)}
+                  className="p-2 rounded-full hover:bg-[var(--bg)] transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="p-8 max-h-[60vh] overflow-y-auto space-y-6">
+                <div>
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest opacity-30 mb-4">Alertas y Hallazgos</h4>
+                  <div className="space-y-3">
+                    {selectedResult.warnings.length > 0 ? selectedResult.warnings.map((w, i) => (
+                      <div key={i} className="flex gap-3 p-4 rounded-2xl bg-[var(--bg)] border border-[var(--border)]">
+                        <div className={cn(
+                          "mt-0.5 shrink-0",
+                          w.toLowerCase().includes("error") || w.toLowerCase().includes("alerta") || w.toLowerCase().includes("cálculo") ? "text-amber-500" : "text-emerald-500"
+                        )}>
+                          <AlertCircle size={16} />
+                        </div>
+                        <p className="text-sm font-medium leading-relaxed">{w}</p>
+                      </div>
+                    )) : (
+                      <p className="text-sm opacity-40 italic">No se encontraron alertas adicionales.</p>
+                    )}
+                  </div>
+                </div>
+
+                {!selectedResult.success && selectedResult.error && (
+                  <div>
+                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">Error Crítico</h4>
+                    <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 text-sm font-medium">
+                      {selectedResult.error}
+                    </div>
+                  </div>
+                )}
+
+                <div className="p-6 rounded-3xl bg-brand/5 border border-brand/10">
+                  <p className="text-xs opacity-60 leading-relaxed">
+                    <span className="font-bold text-brand block mb-1">Nota de Seguridad:</span>
+                    Las reparaciones realizadas se limitan a la estructura XML y limpieza de caracteres. Los sellos fiscales y firmas digitales no han sido modificados para preservar la validez legal del documento.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-8 bg-[var(--bg)]/50 border-t border-[var(--border)] flex justify-end">
+                <button 
+                  onClick={() => setSelectedResult(null)}
+                  className="px-8 py-3 bg-brand text-white rounded-full font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] transition-transform"
+                >
+                  Entendido
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
