@@ -261,6 +261,8 @@ async function startServer() {
       }
       const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
       
+      console.log(`🔔 Webhook received: ${event.type}`);
+      
       switch (event.type) {
         case 'checkout.session.completed':
           const session = event.data.object as any;
@@ -268,37 +270,55 @@ async function startServer() {
           const customerId = session.customer;
           const customerEmail = session.customer_details?.email;
           
+          console.log(`Checkout completed for user ${userId}, customer ${customerId}`);
+
           if (userId) {
             await pool.query(
               "UPDATE users SET stripe_customer_id = $1 WHERE id = $2",
               [customerId, userId]
             );
           } else if (customerEmail) {
-            // Fallback: Link by email if reference ID is missing
             await pool.query(
               "UPDATE users SET stripe_customer_id = $1 WHERE email = $2",
               [customerId, customerEmail]
             );
           }
           break;
+
+        case 'invoice.paid':
+          const invoice = event.data.object as any;
+          const invCustomerId = invoice.customer;
+          const invEmail = invoice.customer_email;
+          
+          console.log(`Invoice paid for customer ${invCustomerId} (${invEmail})`);
+
+          // Grant credits on successful payment (covers new subs and renewals)
+          await pool.query(
+            "UPDATE users SET credits = 10000, plan = 'Pro Unlimited' WHERE stripe_customer_id = $1 OR email = $2",
+            [invCustomerId, invEmail]
+          );
+          break;
+
         case 'customer.subscription.created':
         case 'customer.subscription.updated':
           const subscription = event.data.object as any;
           const subCustomerId = subscription.customer;
           const status = subscription.status;
 
+          console.log(`Subscription ${event.type} for customer ${subCustomerId}: ${status}`);
+
           if (status === 'active') {
-            // Grant 10,000 credits for active subscription
             await pool.query(
               "UPDATE users SET credits = 10000, plan = 'Pro Unlimited' WHERE stripe_customer_id = $1",
               [subCustomerId]
             );
           }
           break;
+
         case 'customer.subscription.deleted':
           const deletedSub = event.data.object as any;
           const delCustomerId = deletedSub.customer;
-          // Reset to free plan
+          console.log(`Subscription deleted for customer ${delCustomerId}`);
           await pool.query(
             "UPDATE users SET credits = 5, plan = 'Free Starter' WHERE stripe_customer_id = $1",
             [delCustomerId]
