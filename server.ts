@@ -107,9 +107,15 @@ async function startServer() {
   app.post("/api/billing/create-checkout-session", async (req, res) => {
     try {
       const { planId, userId } = req.body;
+      
+      // Fetch user email for pre-filling
+      const userRes = await pool.query("SELECT email FROM users WHERE id = $1", [userId]);
+      const userEmail = userRes.rows[0]?.email;
+
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
         client_reference_id: userId?.toString(),
+        customer_email: userEmail,
         line_items: [
           {
             price: planId,
@@ -117,6 +123,9 @@ async function startServer() {
           },
         ],
         mode: "subscription",
+        metadata: {
+          userId: userId?.toString()
+        },
         success_url: `${process.env.APP_URL}/dashboard?success=true`,
         cancel_url: `${process.env.APP_URL}/dashboard?canceled=true`,
       });
@@ -250,6 +259,28 @@ async function startServer() {
     }
   });
 
+  app.get("/api/admin/subscriptions", async (req, res) => {
+    try {
+      // Get users with active plans
+      const result = await pool.query(`
+        SELECT id, name, email, plan, credits, stripe_customer_id 
+        FROM users 
+        WHERE plan != 'Free Starter' 
+        ORDER BY plan DESC
+      `);
+      res.json(result.rows);
+    } catch (err) {
+      res.status(500).json({ error: "Database error" });
+    }
+  });
+
+  app.get("/api/admin/webhook-status", (req, res) => {
+    res.json({ 
+      configured: !!process.env.STRIPE_WEBHOOK_SECRET,
+      endpoint: `${process.env.APP_URL}/api/billing/webhook`
+    });
+  });
+
   // Stripe Webhook Handler
   app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
     const sig = req.headers['stripe-signature'] as string;
@@ -266,7 +297,7 @@ async function startServer() {
       switch (event.type) {
         case 'checkout.session.completed':
           const session = event.data.object as any;
-          const userId = session.client_reference_id;
+          const userId = session.client_reference_id || session.metadata?.userId;
           const customerId = session.customer;
           const customerEmail = session.customer_details?.email;
           
@@ -289,14 +320,22 @@ async function startServer() {
           const invoice = event.data.object as any;
           const invCustomerId = invoice.customer;
           const invEmail = invoice.customer_email;
+          const invUserId = invoice.subscription_details?.metadata?.userId || invoice.metadata?.userId;
           
-          console.log(`Invoice paid for customer ${invCustomerId} (${invEmail})`);
+          console.log(`Invoice paid for customer ${invCustomerId} (${invEmail}), UserID: ${invUserId}`);
 
           // Grant credits on successful payment (covers new subs and renewals)
-          await pool.query(
-            "UPDATE users SET credits = 10000, plan = 'Pro Unlimited' WHERE stripe_customer_id = $1 OR email = $2",
-            [invCustomerId, invEmail]
-          );
+          if (invUserId) {
+            await pool.query(
+              "UPDATE users SET credits = 10000, plan = 'Pro Unlimited', stripe_customer_id = $1 WHERE id = $2",
+              [invCustomerId, invUserId]
+            );
+          } else {
+            await pool.query(
+              "UPDATE users SET credits = 10000, plan = 'Pro Unlimited' WHERE stripe_customer_id = $1 OR email = $2",
+              [invCustomerId, invEmail]
+            );
+          }
           break;
 
         case 'customer.subscription.created':

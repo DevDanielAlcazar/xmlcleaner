@@ -32,6 +32,8 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
   });
   const [userList, setUserList] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [webhookStatus, setWebhookStatus] = useState<{configured: boolean, endpoint: string} | null>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [newCredits, setNewCredits] = useState<number>(0);
 
@@ -47,6 +49,16 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
       .then(data => setLogs(data));
   };
 
+  const fetchSubscriptions = () => {
+    fetch("/api/admin/subscriptions")
+      .then(res => res.json())
+      .then(data => setSubscriptions(data));
+    
+    fetch("/api/admin/webhook-status")
+      .then(res => res.json())
+      .then(data => setWebhookStatus(data));
+  };
+
   useEffect(() => {
     fetch("/api/admin/metrics")
       .then(res => res.json())
@@ -54,6 +66,7 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
     
     fetchUsers();
     fetchLogs();
+    fetchSubscriptions();
   }, []);
 
   const handleUpdateCredits = async () => {
@@ -329,17 +342,73 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
             )}
           </div>
         ) : activeTab === 'subscriptions' ? (
-          <div className="rounded-[2rem] bg-[var(--card)] border border-[var(--border)] overflow-hidden">
-            <div className="p-8 border-b border-[var(--border)] flex justify-between items-center">
-              <div>
-                <h3 className="font-bold text-lg">Subscriptions</h3>
-                <p className="text-xs opacity-40">Stripe billing and revenue tracking.</p>
+          <div className="space-y-8">
+            <div className="rounded-[2rem] bg-[var(--card)] border border-[var(--border)] overflow-hidden">
+              <div className="p-8 border-b border-[var(--border)] flex justify-between items-center">
+                <div>
+                  <h3 className="font-bold text-lg">Estado del Webhook</h3>
+                  <p className="text-xs opacity-40">Configuración de sincronización con Stripe.</p>
+                </div>
+                {webhookStatus?.configured ? (
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 text-emerald-600 text-xs font-bold">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                    Configurado y Activo
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 text-amber-600 text-xs font-bold">
+                    <AlertTriangle size={14} />
+                    Pendiente de Configuración
+                  </div>
+                )}
+              </div>
+              <div className="p-8 bg-[var(--bg)]/30">
+                <p className="text-xs opacity-50 mb-2 uppercase font-bold tracking-widest">URL de Destino en Stripe</p>
+                <code className="block p-4 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-xs font-mono break-all">
+                  {webhookStatus?.endpoint || 'Cargando...'}
+                </code>
               </div>
             </div>
-            <div className="p-12 flex flex-col items-center justify-center opacity-40">
-              <DollarSign size={48} className="mb-4" />
-              <p className="text-sm font-bold">Revenue metrics are being synchronized</p>
-              <p className="text-xs">Check your Stripe Dashboard for real-time data.</p>
+
+            <div className="rounded-[2rem] bg-[var(--card)] border border-[var(--border)] overflow-hidden">
+              <div className="p-8 border-b border-[var(--border)]">
+                <h3 className="font-bold text-lg">Suscripciones Activas</h3>
+                <p className="text-xs opacity-40">Usuarios en planes Pro Unlimited.</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-[var(--border)] text-[10px] font-bold uppercase tracking-widest opacity-40">
+                      <th className="px-8 py-4">Usuario</th>
+                      <th className="px-8 py-4">Plan</th>
+                      <th className="px-8 py-4">Créditos</th>
+                      <th className="px-8 py-4">Stripe ID</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)]">
+                    {subscriptions.length > 0 ? subscriptions.map((sub) => (
+                      <tr key={sub.id} className="text-sm hover:bg-[var(--bg)]/50 transition-colors">
+                        <td className="px-8 py-6">
+                          <div className="flex flex-col">
+                            <span className="font-bold">{sub.name}</span>
+                            <span className="text-xs opacity-40">{sub.email}</span>
+                          </div>
+                        </td>
+                        <td className="px-8 py-6">
+                          <span className="px-2 py-1 rounded-full bg-brand/10 text-brand text-[10px] font-bold uppercase">
+                            {sub.plan}
+                          </span>
+                        </td>
+                        <td className="px-8 py-6 font-bold">{sub.credits}</td>
+                        <td className="px-8 py-6 font-mono text-[10px] opacity-40">{sub.stripe_customer_id || 'N/A'}</td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={4} className="px-8 py-12 text-center opacity-30 text-sm">No hay suscripciones activas registradas.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         ) : (
