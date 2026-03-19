@@ -18,6 +18,101 @@ async function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3001;
 
+  // Stripe Webhook Handler MUST be before express.json()
+  app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    const sig = req.headers['stripe-signature'] as string;
+    // Use environment variable or hardcoded fallback for reliability
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "whsec_LVpUFuYMkRWMf2YayF7a3bVc8C2ypOgq";
+
+    try {
+      if (!webhookSecret) {
+        throw new Error('Stripe webhook secret not configured');
+      }
+      const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+      
+      console.log(`🔔 Webhook received: ${event.type}`);
+      
+      switch (event.type) {
+        case 'checkout.session.completed':
+          const session = event.data.object as any;
+          const userId = session.client_reference_id || session.metadata?.userId;
+          const customerId = session.customer;
+          const customerEmail = session.customer_details?.email;
+          
+          console.log(`Checkout completed for user ${userId}, customer ${customerId}`);
+
+          if (userId) {
+            await pool.query(
+              "UPDATE users SET stripe_customer_id = $1 WHERE id = $2",
+              [customerId, userId]
+            );
+          } else if (customerEmail) {
+            await pool.query(
+              "UPDATE users SET stripe_customer_id = $1 WHERE email = $2",
+              [customerId, customerEmail]
+            );
+          }
+          break;
+
+        case 'invoice.paid':
+          const invoice = event.data.object as any;
+          const invCustomerId = invoice.customer;
+          const invEmail = invoice.customer_email;
+          const invUserId = invoice.subscription_details?.metadata?.userId || invoice.metadata?.userId;
+          
+          console.log(`Invoice paid for customer ${invCustomerId} (${invEmail}), UserID: ${invUserId}`);
+
+          // Grant credits on successful payment (covers new subs and renewals)
+          if (invUserId) {
+            await pool.query(
+              "UPDATE users SET credits = 10000, plan = 'Pro Unlimited', stripe_customer_id = $1 WHERE id = $2",
+              [invCustomerId, invUserId]
+            );
+          } else {
+            await pool.query(
+              "UPDATE users SET credits = 10000, plan = 'Pro Unlimited' WHERE stripe_customer_id = $1 OR email = $2",
+              [invCustomerId, invEmail]
+            );
+          }
+          break;
+
+        case 'customer.subscription.created':
+        case 'customer.subscription.updated':
+          const subscription = event.data.object as any;
+          const subCustomerId = subscription.customer;
+          const status = subscription.status;
+
+          console.log(`Subscription ${event.type} for customer ${subCustomerId}: ${status}`);
+
+          if (status === 'active') {
+            await pool.query(
+              "UPDATE users SET credits = 10000, plan = 'Pro Unlimited' WHERE stripe_customer_id = $1",
+              [subCustomerId]
+            );
+          }
+          break;
+
+        case 'customer.subscription.deleted':
+          const deletedSub = event.data.object as any;
+          const delCustomerId = deletedSub.customer;
+          console.log(`Subscription deleted for customer ${delCustomerId}`);
+          await pool.query(
+            "UPDATE users SET credits = 5, plan = 'Free Starter' WHERE stripe_customer_id = $1",
+            [delCustomerId]
+          );
+          break;
+          
+        default:
+          console.log(`Unhandled event type ${event.type}`);
+      }
+
+      res.json({received: true});
+    } catch (err: any) {
+      console.error(`Webhook Error: ${err.message}`);
+      res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+  });
+
   app.use(express.json());
 
   // API Routes
@@ -280,100 +375,6 @@ async function startServer() {
       configured: !!(process.env.STRIPE_WEBHOOK_SECRET || hardcodedSecret),
       endpoint: `${process.env.APP_URL}/api/billing/webhook`
     });
-  });
-
-  // Stripe Webhook Handler
-  app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-    const sig = req.headers['stripe-signature'] as string;
-    // Use environment variable or hardcoded fallback for reliability
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "whsec_LVpUFuYMkRWMf2YayF7a3bVc8C2ypOgq";
-
-    try {
-      if (!webhookSecret) {
-        throw new Error('Stripe webhook secret not configured');
-      }
-      const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-      
-      console.log(`🔔 Webhook received: ${event.type}`);
-      
-      switch (event.type) {
-        case 'checkout.session.completed':
-          const session = event.data.object as any;
-          const userId = session.client_reference_id || session.metadata?.userId;
-          const customerId = session.customer;
-          const customerEmail = session.customer_details?.email;
-          
-          console.log(`Checkout completed for user ${userId}, customer ${customerId}`);
-
-          if (userId) {
-            await pool.query(
-              "UPDATE users SET stripe_customer_id = $1 WHERE id = $2",
-              [customerId, userId]
-            );
-          } else if (customerEmail) {
-            await pool.query(
-              "UPDATE users SET stripe_customer_id = $1 WHERE email = $2",
-              [customerId, customerEmail]
-            );
-          }
-          break;
-
-        case 'invoice.paid':
-          const invoice = event.data.object as any;
-          const invCustomerId = invoice.customer;
-          const invEmail = invoice.customer_email;
-          const invUserId = invoice.subscription_details?.metadata?.userId || invoice.metadata?.userId;
-          
-          console.log(`Invoice paid for customer ${invCustomerId} (${invEmail}), UserID: ${invUserId}`);
-
-          // Grant credits on successful payment (covers new subs and renewals)
-          if (invUserId) {
-            await pool.query(
-              "UPDATE users SET credits = 10000, plan = 'Pro Unlimited', stripe_customer_id = $1 WHERE id = $2",
-              [invCustomerId, invUserId]
-            );
-          } else {
-            await pool.query(
-              "UPDATE users SET credits = 10000, plan = 'Pro Unlimited' WHERE stripe_customer_id = $1 OR email = $2",
-              [invCustomerId, invEmail]
-            );
-          }
-          break;
-
-        case 'customer.subscription.created':
-        case 'customer.subscription.updated':
-          const subscription = event.data.object as any;
-          const subCustomerId = subscription.customer;
-          const status = subscription.status;
-
-          console.log(`Subscription ${event.type} for customer ${subCustomerId}: ${status}`);
-
-          if (status === 'active') {
-            await pool.query(
-              "UPDATE users SET credits = 10000, plan = 'Pro Unlimited' WHERE stripe_customer_id = $1",
-              [subCustomerId]
-            );
-          }
-          break;
-
-        case 'customer.subscription.deleted':
-          const deletedSub = event.data.object as any;
-          const delCustomerId = deletedSub.customer;
-          console.log(`Subscription deleted for customer ${delCustomerId}`);
-          await pool.query(
-            "UPDATE users SET credits = 5, plan = 'Free Starter' WHERE stripe_customer_id = $1",
-            [delCustomerId]
-          );
-          break;
-        default:
-          console.log(`Unhandled event type: ${event.type}`);
-      }
-
-      res.json({ received: true });
-    } catch (err: any) {
-      console.error(`Webhook Error: ${err.message}`);
-      res.status(400).send(`Webhook Error: ${err.message}`);
-    }
   });
 
   // Vite middleware for development
