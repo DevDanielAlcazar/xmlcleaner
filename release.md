@@ -1,33 +1,34 @@
 # Release Notes - XML Cleaner Web SaaS
 
-## Estado Actual: v1.1.0 (Stripe & UX Refinement)
+## Estado Actual: v1.2.0 (Reliability & Advanced Validation)
 
 ### Realizado:
-- **Corrección Crítica de Stripe**: Se eliminó el método obsoleto `redirectToCheckout` y se implementó la redirección directa vía URL de sesión, resolviendo errores de integración.
+- **Fiabilidad de Webhooks de Stripe**: Se corrigió el procesamiento del *raw body* para la verificación de firmas, eliminando errores de integración y asegurando actualizaciones automáticas de créditos y planes.
+- **Motor de Validación CFDI 4.0 Avanzado**: Implementación de 14+ reglas de negocio críticas (Cálculo de impuestos, precisión decimal, coherencia PPD/PUE, validación de complementos de pago, RFCs, fechas futuras y códigos postales).
+- **Sincronización Automática de Suscripciones**: Los créditos (10,000) y el plan 'Pro Unlimited' se activan instantáneamente al detectar el pago en Stripe, sin intervención manual.
+- **Panel de Administración Extendido**: Visualización en tiempo real de usuarios activos, sus emails, planes, créditos y `stripe_customer_id`.
+- **Manejo de Errores Robusto**: Sistema de logs detallado para webhooks y procesos de limpieza, facilitando el diagnóstico técnico.
 - **IDs de Producción Actualizados**: Configuración de Price IDs reales para planes Mensuales ($29) y Anuales ($290).
 - **Flujo de Conversión Optimizado**: El botón "Probar gratis" ahora obliga al registro de usuario, asegurando la captura de leads.
-- **Notificaciones de Pago**: Sistema de alertas en el Dashboard para confirmar éxito o cancelación de suscripciones.
 - **UI de Facturación Mejorada**: Nueva interfaz de selección de planes con comparativa de beneficios y ahorro.
-- **Arquitectura Base**: Configuración de entorno Full-Stack (Express + React + Vite).
-- **Lógica de Procesamiento (Frontend)**: Implementación de la limpieza de XML en el navegador.
-- **Sistema de Temas Tri-Estado**: Modos Día, Tarde y Noche.
-- **Internacionalización (i18n)**: Soporte para Español e Inglés.
-- **Persistencia Real**: Integración con PostgreSQL para usuarios, créditos y procesos.
-- **Validación Estructural Avanzada**: Diagnóstico de errores CFDI 4.0 y RFC.
-- **Sistema de Registro Seguro**: Doble validación y recuperación vía RFC/CURP.
 
 ### Estado del Proyecto:
-- **Stripe Operativo**: Pagos y suscripciones vinculados a productos reales.
-- **Listo para Despliegue**: Guía `despliegue.md` actualizada.
-- **Base de Datos**: Migración estable y funcional.
-- **Funcionalidad**: 100% operativa con feedback visual mejorado.
+- **Stripe Infalible**: Webhooks configurados con secreto de respaldo y lógica de reintento/actualización automática.
+- **Validación de Grado SAT**: Capacidad para detectar inconsistencias matemáticas y de negocio que otros validadores ignoran.
+- **Base de Datos**: Migración estable y funcional con soporte para historial de procesos.
+- **Funcionalidad**: 100% operativa con feedback visual mejorado y categorización de errores (Error vs Alerta).
 
-### Sugerencias Implementadas:
-1. **Validación Estructural Avanzada**: Identificación de nodos faltantes obligatorios según el estándar SAT.
-2. **Diagnóstico Inteligente de Errores**: Explicación clara de fallos de validación (ej. Versión CFDI, Formato RFC).
-3. **Analítica de Lotes para Admin**: Visualización de métricas de procesamiento.
-4. **Modo Offline Resiliente**: Soporte para limpieza sin conexión con sincronización posterior.
-5. **Reportes de Ahorro de Tiempo**: Métrica de productividad en el dashboard.
+### v1.3.0 (En Desarrollo / Desplegado)
+- **Módulo de Extracción Masiva (Excel)**: Exportación de datos clave de XML a reportes profesionales `.xlsx`.
+- **Módulo de Validación Estatus SAT**: Consulta en tiempo real del estado (Vigente/Cancelado) directamente desde el webservice del SAT "a pulmón".
+- **Control de Módulos desde Admin**: Activación/desactivación granular de nuevas funcionalidades.
+- **Límites de Plan Free Starter**: Restricción de procesamiento a un máximo de 5 archivos por lote para usuarios gratuitos.
+- **Sincronización Pro Unlimited**: Capacidad de procesamiento masivo sin restricciones para suscriptores.
+
+### Sugerencias de Próximos Módulos (v1.4.0):
+1. **Módulo de Visualización (PDF Preview)**: Generación de una representación amigable (tipo factura) del XML para revisión rápida sin abrir el código.
+2. **Módulo de Auditoría EFOS/EDOS**: Cruce automático de RFCs del emisor contra las listas negras del SAT (Empresas que Facturan Operaciones Simuladas).
+3. **Módulo de Auditoría de Nómina**: Validación específica para complementos de nómina, detectando errores en retenciones de ISR y cuotas IMSS.
 
 ---
-*Desarrollado con enfoque en conversión y eficiencia operativa.*
+*Desarrollado con enfoque en cumplimiento fiscal y automatización de procesos contables.*

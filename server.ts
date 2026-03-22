@@ -164,6 +164,25 @@ async function startServer() {
     }
   });
 
+  app.get("/api/modules", async (req, res) => {
+    try {
+      const result = await pool.query("SELECT * FROM app_modules ORDER BY id ASC");
+      res.json(result.rows);
+    } catch (err) {
+      res.status(500).json({ error: "Database error" });
+    }
+  });
+
+  app.post("/api/admin/modules/toggle", async (req, res) => {
+    const { moduleId, isActive } = req.body;
+    try {
+      await pool.query("UPDATE app_modules SET is_active = $1 WHERE id = $2", [isActive, moduleId]);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: "Error updating module" });
+    }
+  });
+
   app.get("/api/admin/users", async (req, res) => {
     try {
       const result = await pool.query(
@@ -375,6 +394,52 @@ async function startServer() {
       configured: !!(process.env.STRIPE_WEBHOOK_SECRET || hardcodedSecret),
       endpoint: `${process.env.APP_URL}/api/billing/webhook`
     });
+  });
+
+  app.post("/api/sat/status", async (req, res) => {
+    const { re, rr, tt, id } = req.body;
+    
+    if (!re || !rr || !tt || !id) {
+      return res.status(400).json({ error: "Faltan parámetros para la consulta" });
+    }
+
+    const soapRequest = `
+      <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+         <soapenv:Header/>
+         <soapenv:Body>
+            <tem:Consulta>
+               <tem:expresionImpresa><![CDATA[?re=${re}&rr=${rr}&tt=${tt}&id=${id}]]></tem:expresionImpresa>
+            </tem:Consulta>
+         </soapenv:Body>
+      </soapenv:Envelope>
+    `;
+
+    try {
+      const response = await fetch("https://consultaqr.facturaelectronica.sat.gob.mx/ConsultaCFDIService.svc", {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/xml;charset=UTF-8",
+          "SOAPAction": "http://tempuri.org/IConsultaCFDIService/Consulta"
+        },
+        body: soapRequest
+      });
+
+      const text = await response.text();
+      
+      // Basic extraction of status from XML response
+      const statusMatch = text.match(/<a:Estado>(.*?)<\/a:Estado>/);
+      const codigoMatch = text.match(/<a:CodigoEstatus>(.*?)<\/a:CodigoEstatus>/);
+      const cancelableMatch = text.match(/<a:EsCancelable>(.*?)<\/a:EsCancelable>/);
+
+      res.json({
+        estado: statusMatch ? statusMatch[1] : "No Encontrado",
+        codigo: codigoMatch ? codigoMatch[1] : "Error en consulta",
+        cancelable: cancelableMatch ? cancelableMatch[1] : "Desconocido"
+      });
+    } catch (err) {
+      console.error("SAT Query Error:", err);
+      res.status(500).json({ error: "Error al consultar el SAT" });
+    }
   });
 
   // Vite middleware for development

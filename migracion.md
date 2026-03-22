@@ -66,6 +66,20 @@ CREATE TABLE processes (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Tabla de Módulos de Aplicación
+CREATE TABLE app_modules (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    is_active BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insertar módulos iniciales
+INSERT INTO app_modules (name, description, is_active) VALUES 
+('Extracción Masiva (Excel)', 'Permite exportar datos clave de múltiples XMLs a una hoja de cálculo Excel.', FALSE),
+('Validación Estatus SAT', 'Consulta en tiempo real si el UUID del CFDI está vigente o cancelado en el SAT.', FALSE);
+
 -- Permisos sobre las tablas para el usuario
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO xml_cleaner_user;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO xml_cleaner_user;

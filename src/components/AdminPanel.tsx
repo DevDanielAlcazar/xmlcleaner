@@ -36,6 +36,7 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
   const [webhookStatus, setWebhookStatus] = useState<{configured: boolean, endpoint: string} | null>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [newCredits, setNewCredits] = useState<number>(0);
+  const [modules, setModules] = useState<any[]>([]);
 
   const fetchUsers = () => {
     fetch("/api/admin/users")
@@ -59,6 +60,12 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
       .then(data => setWebhookStatus(data));
   };
 
+  const fetchModules = () => {
+    fetch("/api/modules")
+      .then(res => res.json())
+      .then(data => setModules(data));
+  };
+
   useEffect(() => {
     fetch("/api/admin/metrics")
       .then(res => res.json())
@@ -67,7 +74,23 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
     fetchUsers();
     fetchLogs();
     fetchSubscriptions();
+    fetchModules();
   }, []);
+
+  const handleToggleModule = async (moduleId: number, currentStatus: boolean) => {
+    try {
+      const res = await fetch("/api/admin/modules/toggle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ moduleId, isActive: !currentStatus })
+      });
+      if (res.ok) {
+        fetchModules();
+      }
+    } catch (err) {
+      console.error("Error toggling module:", err);
+    }
+  };
 
   const handleUpdateCredits = async () => {
     if (!editingUser) return;
@@ -199,7 +222,39 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
             </div>
 
             {/* Main Admin Content */}
-            <div className="grid grid-cols-1 gap-8">
+            <div className="grid grid-cols-2 gap-8">
+              {/* Modules Control */}
+              <div className="p-8 rounded-[2rem] bg-[var(--card)] border border-[var(--border)]">
+                <div className="flex justify-between items-center mb-8">
+                  <div>
+                    <h3 className="font-bold text-lg">Control de Módulos</h3>
+                    <p className="text-xs opacity-40">Activa o desactiva funciones para los usuarios.</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  {modules.map((mod) => (
+                    <div key={mod.id} className="flex items-center justify-between p-4 rounded-2xl bg-[var(--bg)] border border-[var(--border)]">
+                      <div>
+                        <p className="text-sm font-bold">{mod.name}</p>
+                        <p className="text-[10px] opacity-40">{mod.description}</p>
+                      </div>
+                      <button 
+                        onClick={() => handleToggleModule(mod.id, mod.is_active)}
+                        className={cn(
+                          "w-12 h-6 rounded-full transition-all relative",
+                          mod.is_active ? "bg-emerald-500" : "bg-gray-300"
+                        )}
+                      >
+                        <div className={cn(
+                          "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
+                          mod.is_active ? "left-7" : "left-1"
+                        )} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Chart Placeholder */}
               <div className="p-8 rounded-[2rem] bg-[var(--card)] border border-[var(--border)]">
                 <div className="flex justify-between items-center mb-8">

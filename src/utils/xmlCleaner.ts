@@ -9,6 +9,11 @@ export interface CleanResult {
   warnings: string[];
   success: boolean;
   error?: string;
+  satStatus?: {
+    estado: string;
+    codigo: string;
+    cancelable: string;
+  };
 }
 
 const XML_DECL_RE = /^\s*<\?xml\b[^?]*\?>/i;

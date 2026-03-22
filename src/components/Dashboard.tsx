@@ -23,11 +23,14 @@ import {
   Globe,
   Terminal,
   Search,
-  X
+  X,
+  RefreshCw,
+  FileCode
 } from "lucide-react";
 import { cn } from "../utils/cn";
 import { cleanXML, CleanResult } from "../utils/xmlCleaner";
 import JSZip from "jszip";
+import * as XLSX from "xlsx";
 
 import { loadStripe } from "@stripe/stripe-js";
 
@@ -51,6 +54,8 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
     cloudSpace: "0 MB"
   });
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const [modules, setModules] = useState<any[]>([]);
+  const [validatingSAT, setValidatingSAT] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -95,6 +100,11 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
           timeSaved: `~${((data.processedToday || 0) * 5 / 60).toFixed(1)} hrs`
         }));
       });
+
+    // Fetch modules
+    fetch("/api/modules")
+      .then(res => res.json())
+      .then(data => setModules(data));
   }, [user]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -107,7 +117,18 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
   } as any);
 
   const handleProcess = async () => {
-    if (files.length === 0 || credits < files.length) return;
+    if (files.length === 0) return;
+    
+    // Enforce Free Starter limit
+    if (plan === "Free Starter" && files.length > 5) {
+      setNotification({ type: 'error', message: 'El plan Free Starter solo permite procesar hasta 5 archivos por lote. Por favor, reduce la cantidad o mejora tu plan.' });
+      return;
+    }
+
+    if (credits < files.length) {
+      setNotification({ type: 'error', message: 'No tienes suficientes créditos para procesar estos archivos.' });
+      return;
+    }
     
     setProcessing(true);
     const newResults: CleanResult[] = [];
@@ -151,6 +172,88 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
     a.href = url;
     a.download = `xml_cleaner_batch_${Date.now()}.zip`;
     a.click();
+  };
+
+  const exportToExcel = () => {
+    const data = results.map(res => {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(res.cleanedContent, "text/xml");
+      const comprobante = xmlDoc.getElementsByTagName("cfdi:Comprobante")[0];
+      const emisor = xmlDoc.getElementsByTagName("cfdi:Emisor")[0];
+      const receptor = xmlDoc.getElementsByTagName("cfdi:Receptor")[0];
+      const timbre = xmlDoc.getElementsByTagName("tfd:TimbreFiscalDigital")[0];
+
+      return {
+        "Archivo": res.originalName,
+        "Fecha": comprobante?.getAttribute("Fecha") || "",
+        "Folio": comprobante?.getAttribute("Folio") || "",
+        "Serie": comprobante?.getAttribute("Serie") || "",
+        "UUID": timbre?.getAttribute("UUID") || "",
+        "RFC Emisor": emisor?.getAttribute("Rfc") || "",
+        "Nombre Emisor": emisor?.getAttribute("Nombre") || "",
+        "RFC Receptor": receptor?.getAttribute("Rfc") || "",
+        "Nombre Receptor": receptor?.getAttribute("Nombre") || "",
+        "Uso CFDI": receptor?.getAttribute("UsoCFDI") || "",
+        "Metodo Pago": comprobante?.getAttribute("MetodoPago") || "",
+        "Forma Pago": comprobante?.getAttribute("FormaPago") || "",
+        "Subtotal": parseFloat(comprobante?.getAttribute("SubTotal") || "0"),
+        "Descuento": parseFloat(comprobante?.getAttribute("Descuento") || "0"),
+        "Total": parseFloat(comprobante?.getAttribute("Total") || "0"),
+        "Moneda": comprobante?.getAttribute("Moneda") || "",
+        "Tipo Comprobante": comprobante?.getAttribute("TipoDeComprobante") || ""
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "XML Data");
+    XLSX.writeFile(workbook, `reporte_xml_${Date.now()}.xlsx`);
+  };
+
+  const validateSAT = async () => {
+    if (results.length === 0) return;
+
+    // Enforce Free Starter limit for SAT validation too
+    if (plan === "Free Starter" && results.length > 5) {
+      setNotification({ type: 'error', message: 'El plan Free Starter solo permite validar hasta 5 archivos por lote en el SAT.' });
+      return;
+    }
+
+    setValidatingSAT(true);
+    const updatedResults = [...results];
+
+    for (let i = 0; i < updatedResults.length; i++) {
+      const res = updatedResults[i];
+      if (!res.success) continue;
+
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(res.cleanedContent, "text/xml");
+      const comprobante = xmlDoc.getElementsByTagName("cfdi:Comprobante")[0];
+      const emisor = xmlDoc.getElementsByTagName("cfdi:Emisor")[0];
+      const receptor = xmlDoc.getElementsByTagName("cfdi:Receptor")[0];
+      const timbre = xmlDoc.getElementsByTagName("tfd:TimbreFiscalDigital")[0];
+
+      const re = emisor?.getAttribute("Rfc");
+      const rr = receptor?.getAttribute("Rfc");
+      const tt = comprobante?.getAttribute("Total");
+      const id = timbre?.getAttribute("UUID");
+
+      if (re && rr && tt && id) {
+        try {
+          const response = await fetch("/api/sat/status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ re, rr, tt, id })
+          });
+          const data = await response.json();
+          updatedResults[i] = { ...res, satStatus: data };
+          setResults([...updatedResults]); // Update UI progressively
+        } catch (err) {
+          console.error("Error validating SAT:", err);
+        }
+      }
+    }
+    setValidatingSAT(false);
   };
 
   const handleUpgrade = async (priceId?: string) => {
@@ -352,6 +455,25 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                         <Download size={18} />
                         {t('exportAll')}
                       </button>
+                      {modules.find(m => m.id === 1)?.is_active && (
+                        <button 
+                          onClick={exportToExcel}
+                          className="bg-emerald-500 text-white px-6 py-3 rounded-full text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-emerald-500/20"
+                        >
+                          <FileCode size={18} />
+                          Exportar Excel
+                        </button>
+                      )}
+                      {modules.find(m => m.id === 2)?.is_active && (
+                        <button 
+                          onClick={validateSAT}
+                          disabled={validatingSAT}
+                          className="bg-blue-500 text-white px-6 py-3 rounded-full text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-blue-500/20 disabled:opacity-50"
+                        >
+                          {validatingSAT ? <RefreshCw size={18} className="animate-spin" /> : <Globe size={18} />}
+                          Validar Estatus SAT
+                        </button>
+                      )}
                     </div>
                     
                     <div className="grid grid-cols-3 gap-4 mb-8">
@@ -384,10 +506,16 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                             </div>
                             <button 
                               onClick={() => setSelectedResult(r)}
-                              className="p-2 rounded-lg bg-white/10 hover:bg-white/30 transition-colors"
+                              className="p-2 rounded-lg bg-white/10 hover:bg-white/30 transition-colors relative"
                               title="Ver detalles"
                             >
                               <Search size={14} />
+                              {r.satStatus && (
+                                <div className={cn(
+                                  "absolute -top-1 -right-1 w-2 h-2 rounded-full",
+                                  r.satStatus.estado === 'Vigente' ? "bg-emerald-400" : "bg-rose-400"
+                                )} />
+                              )}
                             </button>
                           </div>
                         </div>
@@ -606,6 +734,31 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                     )}
                   </div>
                 </div>
+
+                {selectedResult.satStatus && (
+                  <div>
+                    <h4 className="text-[10px] font-bold uppercase tracking-widest opacity-30 mb-4">Estatus Real SAT</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 rounded-2xl bg-[var(--bg)] border border-[var(--border)]">
+                        <p className="text-[10px] opacity-40 uppercase font-bold mb-1">Estado</p>
+                        <p className={cn(
+                          "text-sm font-bold",
+                          selectedResult.satStatus.estado === 'Vigente' ? "text-emerald-500" : "text-rose-500"
+                        )}>
+                          {selectedResult.satStatus.estado}
+                        </p>
+                      </div>
+                      <div className="p-4 rounded-2xl bg-[var(--bg)] border border-[var(--border)]">
+                        <p className="text-[10px] opacity-40 uppercase font-bold mb-1">Cancelable</p>
+                        <p className="text-sm font-bold">{selectedResult.satStatus.cancelable}</p>
+                      </div>
+                      <div className="col-span-2 p-4 rounded-2xl bg-[var(--bg)] border border-[var(--border)]">
+                        <p className="text-[10px] opacity-40 uppercase font-bold mb-1">Código SAT</p>
+                        <p className="text-xs font-mono">{selectedResult.satStatus.codigo}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {!selectedResult.success && selectedResult.error && (
                   <div>
