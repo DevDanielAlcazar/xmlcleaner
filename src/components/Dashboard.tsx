@@ -40,6 +40,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
   const { t, lang, setLang } = useLanguage();
   const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<'panel' | 'history' | 'billing' | 'preferences'>('panel');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [results, setResults] = useState<CleanResult[]>([]);
   const [selectedResult, setSelectedResult] = useState<CleanResult | null>(null);
@@ -55,6 +56,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
   });
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const [modules, setModules] = useState<any[]>([]);
+  const [loadingModules, setLoadingModules] = useState(true);
   const [validatingSAT, setValidatingSAT] = useState(false);
 
   useEffect(() => {
@@ -102,9 +104,17 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
       });
 
     // Fetch modules
+    setLoadingModules(true);
     fetch("/api/modules")
       .then(res => res.json())
-      .then(data => setModules(data));
+      .then(data => {
+        setModules(data);
+        setLoadingModules(false);
+      })
+      .catch(err => {
+        console.error("Error fetching modules:", err);
+        setLoadingModules(false);
+      });
   }, [user]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -276,25 +286,55 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
   };
 
   return (
-    <div className="flex min-h-screen bg-[var(--bg)]">
+    <div className="flex min-h-screen bg-[var(--bg)] relative">
+      {/* Mobile Header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[var(--card)] border-b border-[var(--border)] z-40 flex items-center justify-between px-6">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center text-white font-bold">X</div>
+          <span className="font-display font-bold text-lg tracking-tight">XMLs <span className="text-brand">PRO</span></span>
+        </div>
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="p-2 rounded-xl bg-[var(--bg)] border border-[var(--border)]"
+        >
+          {isSidebarOpen ? <X size={20} /> : <LayoutDashboard size={20} />}
+        </button>
+      </div>
+
+      {/* Sidebar Overlay */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarOpen(false)}
+            className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
-      <aside className="w-72 border-r border-[var(--border)] flex flex-col p-6 gap-8">
+      <aside className={cn(
+        "fixed lg:static inset-y-0 left-0 w-72 border-r border-[var(--border)] flex flex-col p-6 gap-8 bg-[var(--bg)] z-50 transition-transform lg:translate-x-0",
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
         <div className="flex items-center gap-2 mb-4">
           <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center text-white font-bold">X</div>
           <span className="font-display font-bold text-xl tracking-tight">XMLs <span className="text-brand">PRO</span></span>
         </div>
 
         <nav className="flex-1 space-y-2">
-          <div onClick={() => setActiveTab('panel')}>
+          <div onClick={() => { setActiveTab('panel'); setIsSidebarOpen(false); }}>
             <SidebarItem icon={<LayoutDashboard size={20} />} label={t('dashboard')} active={activeTab === 'panel'} />
           </div>
-          <div onClick={() => setActiveTab('history')}>
+          <div onClick={() => { setActiveTab('history'); setIsSidebarOpen(false); }}>
             <SidebarItem icon={<History size={20} />} label={t('history')} active={activeTab === 'history'} />
           </div>
-          <div onClick={() => setActiveTab('billing')}>
+          <div onClick={() => { setActiveTab('billing'); setIsSidebarOpen(false); }}>
             <SidebarItem icon={<CreditCard size={20} />} label={t('billing')} active={activeTab === 'billing'} />
           </div>
-          <div onClick={() => setActiveTab('preferences')}>
+          <div onClick={() => { setActiveTab('preferences'); setIsSidebarOpen(false); }}>
             <SidebarItem icon={<Settings size={20} />} label={t('preferences')} active={activeTab === 'preferences'} />
           </div>
           {user?.isAdmin && (
@@ -342,7 +382,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-12 overflow-y-auto">
+      <main className="flex-1 p-6 lg:p-12 overflow-y-auto pt-24 lg:pt-12">
         <AnimatePresence>
           {notification && (
             <motion.div 
@@ -360,13 +400,13 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
           )}
         </AnimatePresence>
 
-        <header className="flex justify-between items-start mb-12">
+        <header className="flex flex-col lg:flex-row justify-between items-start gap-6 mb-12">
           <div>
-            <h1 className="text-4xl font-display font-bold tracking-tight mb-2">Good afternoon, {user?.name || 'User'}</h1>
+            <h1 className="text-3xl lg:text-4xl font-display font-bold tracking-tight mb-2">Good afternoon, {user?.name || 'User'}</h1>
             <p className="opacity-50 text-sm">Let's find some calm in your data cleaning workflow today.</p>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="flex bg-[var(--card)] rounded-full p-1 border border-[var(--border)]">
               <button onClick={() => setTheme('day')} className={cn("p-1.5 rounded-full transition-all", theme === 'day' && "bg-white shadow-sm text-brand")}><Sun size={16} /></button>
               <button onClick={() => setTheme('afternoon')} className={cn("p-1.5 rounded-full transition-all", theme === 'afternoon' && "bg-white shadow-sm text-amber-500")}><Sunset size={16} /></button>
@@ -385,15 +425,15 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
           </div>
         </header>
 
-        <div className="grid grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {activeTab === 'panel' ? (
             <>
               {/* Upload Area */}
-              <div className="col-span-2 space-y-8">
+              <div className="lg:col-span-2 space-y-8">
                 <div 
                   {...getRootProps()} 
                   className={cn(
-                    "aspect-[2/1] rounded-[2.5rem] border-2 border-dashed flex flex-col items-center justify-center p-12 transition-all cursor-pointer",
+                    "aspect-square lg:aspect-[2/1] rounded-[2.5rem] border-2 border-dashed flex flex-col items-center justify-center p-6 lg:p-12 transition-all cursor-pointer",
                     isDragActive ? "border-brand bg-brand/5 scale-[0.99]" : "border-[var(--border)] bg-[var(--card)] hover:border-brand/50"
                   )}
                 >
@@ -401,7 +441,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                   <div className="w-16 h-16 rounded-3xl bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center text-brand mb-6 shadow-sm">
                     <Upload size={32} />
                   </div>
-                  <h3 className="text-2xl font-display font-bold mb-2">{t('selectFile')}</h3>
+                  <h3 className="text-xl lg:text-2xl font-display font-bold mb-2 text-center">{t('selectFile')}</h3>
                   <p className="opacity-40 text-sm text-center max-w-xs">{t('dropFiles')}</p>
                   <p className="mt-8 text-xs font-bold opacity-20 uppercase tracking-widest">{t('maxSize')}</p>
                 </div>
@@ -410,14 +450,14 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                   <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]"
+                    className="p-6 lg:p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]"
                   >
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                       <h3 className="font-bold">Pending Files ({files.length})</h3>
                       <button 
                         onClick={handleProcess}
                         disabled={processing || credits < files.length}
-                        className="bg-brand text-white px-6 py-2 rounded-full text-sm font-bold disabled:opacity-50 flex items-center gap-2"
+                        className="w-full sm:w-auto bg-brand text-white px-6 py-2 rounded-full text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                         {processing ? <Zap size={16} className="animate-spin" /> : <Zap size={16} />}
                         {t('cleanNow')}
@@ -428,7 +468,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                         <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg)] border border-[var(--border)]">
                           <div className="flex items-center gap-3">
                             <FileText size={18} className="opacity-30" />
-                            <span className="text-sm font-medium">{f.name}</span>
+                            <span className="text-sm font-medium truncate max-w-[150px] sm:max-w-none">{f.name}</span>
                           </div>
                           <span className="text-xs opacity-30">{(f.size / 1024).toFixed(1)} KB</span>
                         </div>
@@ -441,42 +481,44 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                   <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="p-8 rounded-[2.5rem] bg-brand text-white"
+                    className="p-6 lg:p-8 rounded-[2.5rem] bg-brand text-white"
                   >
-                    <div className="flex justify-between items-center mb-8">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8">
                       <div>
                         <h3 className="text-2xl font-display font-bold">{t('batchResults')}</h3>
                         <p className="text-sm opacity-70">{t('integrityCheck')}</p>
                       </div>
-                      <button 
-                        onClick={downloadZip}
-                        className="bg-white text-brand px-6 py-3 rounded-full text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform"
-                      >
-                        <Download size={18} />
-                        {t('exportAll')}
-                      </button>
-                      {modules.find(m => m.id === 1)?.is_active && (
+                      <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                         <button 
-                          onClick={exportToExcel}
-                          className="bg-emerald-500 text-white px-6 py-3 rounded-full text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-emerald-500/20"
+                          onClick={downloadZip}
+                          className="flex-1 sm:flex-none bg-white text-brand px-4 lg:px-6 py-3 rounded-full text-xs lg:text-sm font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform"
                         >
-                          <FileCode size={18} />
-                          Exportar Excel
+                          <Download size={16} />
+                          {t('exportAll')}
                         </button>
-                      )}
-                      {modules.find(m => m.id === 2)?.is_active && (
-                        <button 
-                          onClick={validateSAT}
-                          disabled={validatingSAT}
-                          className="bg-blue-500 text-white px-6 py-3 rounded-full text-sm font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-blue-500/20 disabled:opacity-50"
-                        >
-                          {validatingSAT ? <RefreshCw size={18} className="animate-spin" /> : <Globe size={18} />}
-                          Validar Estatus SAT
-                        </button>
-                      )}
+                        {!loadingModules && modules.find(m => m.id === 1)?.is_active && (
+                          <button 
+                            onClick={exportToExcel}
+                            className="flex-1 sm:flex-none bg-emerald-500 text-white px-4 lg:px-6 py-3 rounded-full text-xs lg:text-sm font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-emerald-500/20"
+                          >
+                            <FileCode size={16} />
+                            Excel
+                          </button>
+                        )}
+                        {!loadingModules && modules.find(m => m.id === 2)?.is_active && (
+                          <button 
+                            onClick={validateSAT}
+                            disabled={validatingSAT}
+                            className="flex-1 sm:flex-none bg-blue-500 text-white px-4 lg:px-6 py-3 rounded-full text-xs lg:text-sm font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-blue-500/20 disabled:opacity-50"
+                          >
+                            {validatingSAT ? <RefreshCw size={16} className="animate-spin" /> : <Globe size={16} />}
+                            SAT
+                          </button>
+                        )}
+                      </div>
                     </div>
                     
-                    <div className="grid grid-cols-3 gap-4 mb-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                       <StatCard label="Cleaned" value={results.filter(r => r.success && !r.warnings.some(w => w.toLowerCase().includes("error") || w.toLowerCase().includes("alerta"))).length} />
                       <StatCard label="Exceptions" value={results.filter(r => !r.success || r.warnings.some(w => w.toLowerCase().includes("error") || w.toLowerCase().includes("alerta"))).length} />
                       <StatCard label="Efficiency" value={`${Math.round((results.filter(r => r.success && !r.warnings.some(w => w.toLowerCase().includes("error") || w.toLowerCase().includes("alerta"))).length / results.length) * 100)}%`} />
@@ -493,10 +535,10 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                             ) : (
                               <CheckCircle2 size={18} className="text-emerald-500" />
                             )}
-                            <span className="text-sm font-medium truncate max-w-[200px]">{r.originalName}</span>
+                            <span className="text-sm font-medium truncate max-w-[120px] sm:max-w-[200px]">{r.originalName}</span>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <div className="flex flex-wrap gap-1 justify-end max-w-[150px]">
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <div className="hidden sm:flex flex-wrap gap-1 justify-end max-w-[150px]">
                               {r.warnings.slice(0, 1).map((w, j) => (
                                 <span key={j} className="text-[9px] bg-white/20 px-2 py-0.5 rounded-md uppercase font-bold tracking-wider truncate max-w-full">{w}</span>
                               ))}
@@ -506,10 +548,10 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                             </div>
                             <button 
                               onClick={() => setSelectedResult(r)}
-                              className="p-2 rounded-lg bg-white/10 hover:bg-white/30 transition-colors relative"
+                              className="p-2.5 rounded-xl bg-white/10 hover:bg-white/30 transition-colors relative"
                               title="Ver detalles"
                             >
-                              <Search size={14} />
+                              <Search size={16} />
                               {r.satStatus && (
                                 <div className={cn(
                                   "absolute -top-1 -right-1 w-2 h-2 rounded-full",
@@ -569,7 +611,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
               </div>
             </>
           ) : activeTab === 'history' ? (
-            <div className="col-span-3 p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
+            <div className="lg:col-span-3 p-6 lg:p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
               <h2 className="text-2xl font-display font-bold mb-8">{t('history')}</h2>
               <div className="space-y-4">
                 {history.length > 0 ? history.map((item, i) => (
@@ -585,10 +627,10 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
               </div>
             </div>
           ) : activeTab === 'billing' ? (
-            <div className="col-span-3 p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
+            <div className="lg:col-span-3 p-6 lg:p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
               <h2 className="text-2xl font-display font-bold mb-8">{t('billing')}</h2>
-              <div className="grid grid-cols-2 gap-8">
-                <div className="p-8 rounded-3xl border border-[var(--border)] bg-[var(--bg)] flex flex-col">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="p-6 lg:p-8 rounded-3xl border border-[var(--border)] bg-[var(--bg)] flex flex-col">
                   <div className="flex justify-between items-start mb-6">
                     <div>
                       <h3 className="text-xl font-bold mb-1">Plan Mensual</h3>
@@ -610,7 +652,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                   </button>
                 </div>
 
-                <div className="p-8 rounded-3xl border-2 border-brand bg-brand/5 flex flex-col relative overflow-hidden">
+                <div className="p-6 lg:p-8 rounded-3xl border-2 border-brand bg-brand/5 flex flex-col relative overflow-hidden">
                   <div className="absolute top-4 right-4 bg-brand text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-widest">Ahorra 2 meses</div>
                   <div className="flex justify-between items-start mb-6">
                     <div>
@@ -634,12 +676,12 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
               </div>
             </div>
           ) : (
-            <div className="col-span-3 p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
+            <div className="lg:col-span-3 p-6 lg:p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
               <h2 className="text-2xl font-display font-bold mb-8">{t('preferences')}</h2>
               <div className="max-w-md space-y-8">
                 <div>
                   <label className="block text-sm font-bold mb-4 opacity-50 uppercase tracking-widest">Language</label>
-                  <div className="flex gap-4">
+                  <div className="flex flex-col sm:flex-row gap-4">
                     <button 
                       onClick={() => setLang('es')}
                       className={cn("flex-1 py-4 rounded-2xl border border-[var(--border)] font-bold transition-all", lang === 'es' ? "bg-brand text-white border-brand" : "bg-[var(--bg)]")}
@@ -656,7 +698,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                 </div>
                 <div>
                   <label className="block text-sm font-bold mb-4 opacity-50 uppercase tracking-widest">Appearance</label>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <button onClick={() => setTheme('day')} className={cn("py-4 rounded-2xl border border-[var(--border)] flex flex-col items-center gap-2", theme === 'day' && "border-brand bg-brand/5 text-brand")}>
                       <Sun size={20} />
                       <span className="text-xs font-bold">{t('day')}</span>
@@ -692,19 +734,19 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-[var(--card)] rounded-[2.5rem] border border-[var(--border)] shadow-2xl overflow-hidden"
+              className="relative w-full max-w-2xl bg-[var(--card)] rounded-[2rem] lg:rounded-[2.5rem] border border-[var(--border)] shadow-2xl overflow-hidden mx-4"
             >
-              <div className="p-8 border-b border-[var(--border)] flex justify-between items-center">
+              <div className="p-6 lg:p-8 border-b border-[var(--border)] flex justify-between items-center">
                 <div className="flex items-center gap-4">
                   <div className={cn(
-                    "w-12 h-12 rounded-2xl flex items-center justify-center",
+                    "w-10 h-10 lg:w-12 lg:h-12 rounded-xl lg:rounded-2xl flex items-center justify-center",
                     selectedResult.success ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
                   )}>
-                    {selectedResult.success ? <CheckCircle2 size={24} /> : <AlertCircle size={24} />}
+                    {selectedResult.success ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold">{selectedResult.originalName}</h3>
-                    <p className="text-xs opacity-40">Detalles del procesamiento y validación</p>
+                    <h3 className="text-lg lg:text-xl font-bold truncate max-w-[150px] sm:max-w-none">{selectedResult.originalName}</h3>
+                    <p className="text-[10px] lg:text-xs opacity-40">Detalles del procesamiento y validación</p>
                   </div>
                 </div>
                 <button 
@@ -715,7 +757,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                 </button>
               </div>
               
-              <div className="p-8 max-h-[60vh] overflow-y-auto space-y-6">
+              <div className="p-6 lg:p-8 max-h-[60vh] overflow-y-auto space-y-6">
                 <div>
                   <h4 className="text-[10px] font-bold uppercase tracking-widest opacity-30 mb-4">Alertas y Hallazgos</h4>
                   <div className="space-y-3">
@@ -738,7 +780,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                 {selectedResult.satStatus && (
                   <div>
                     <h4 className="text-[10px] font-bold uppercase tracking-widest opacity-30 mb-4">Estatus Real SAT</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="p-4 rounded-2xl bg-[var(--bg)] border border-[var(--border)]">
                         <p className="text-[10px] opacity-40 uppercase font-bold mb-1">Estado</p>
                         <p className={cn(
@@ -752,9 +794,9 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                         <p className="text-[10px] opacity-40 uppercase font-bold mb-1">Cancelable</p>
                         <p className="text-sm font-bold">{selectedResult.satStatus.cancelable}</p>
                       </div>
-                      <div className="col-span-2 p-4 rounded-2xl bg-[var(--bg)] border border-[var(--border)]">
+                      <div className="sm:col-span-2 p-4 rounded-2xl bg-[var(--bg)] border border-[var(--border)]">
                         <p className="text-[10px] opacity-40 uppercase font-bold mb-1">Código SAT</p>
-                        <p className="text-xs font-mono">{selectedResult.satStatus.codigo}</p>
+                        <p className="text-xs font-mono break-all">{selectedResult.satStatus.codigo}</p>
                       </div>
                     </div>
                   </div>
@@ -777,10 +819,10 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                 </div>
               </div>
 
-              <div className="p-8 bg-[var(--bg)]/50 border-t border-[var(--border)] flex justify-end">
+              <div className="p-6 lg:p-8 bg-[var(--bg)]/50 border-t border-[var(--border)] flex justify-end">
                 <button 
                   onClick={() => setSelectedResult(null)}
-                  className="px-8 py-3 bg-brand text-white rounded-full font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] transition-transform"
+                  className="w-full sm:w-auto px-8 py-3 bg-brand text-white rounded-full font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] transition-transform"
                 >
                   Entendido
                 </button>

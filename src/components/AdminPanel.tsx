@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "../hooks/useLanguage";
 import { useTheme } from "../hooks/useTheme";
 import { 
@@ -16,7 +16,8 @@ import {
   MoreHorizontal,
   ArrowUpRight,
   RefreshCw,
-  LogOut
+  LogOut,
+  X
 } from "lucide-react";
 import { cn } from "../utils/cn";
 
@@ -24,6 +25,7 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
   const { t } = useLanguage();
   const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'subscriptions' | 'logs'>('overview');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [metrics, setMetrics] = useState({
     totalUsers: 0,
     dailyRevenue: 0,
@@ -37,6 +39,7 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
   const [editingUser, setEditingUser] = useState<any>(null);
   const [newCredits, setNewCredits] = useState<number>(0);
   const [modules, setModules] = useState<any[]>([]);
+  const [loadingModules, setLoadingModules] = useState(true);
 
   const fetchUsers = () => {
     fetch("/api/admin/users")
@@ -61,9 +64,17 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
   };
 
   const fetchModules = () => {
+    setLoadingModules(true);
     fetch("/api/modules")
       .then(res => res.json())
-      .then(data => setModules(data));
+      .then(data => {
+        setModules(data);
+        setLoadingModules(false);
+      })
+      .catch(err => {
+        console.error("Error fetching modules:", err);
+        setLoadingModules(false);
+      });
   };
 
   useEffect(() => {
@@ -89,6 +100,17 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
       }
     } catch (err) {
       console.error("Error toggling module:", err);
+    }
+  };
+
+  const handleSeedModules = async () => {
+    try {
+      const res = await fetch("/api/admin/modules/seed", { method: "POST" });
+      if (res.ok) {
+        fetchModules();
+      }
+    } catch (err) {
+      console.error("Error seeding modules:", err);
     }
   };
 
@@ -126,9 +148,39 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
   };
 
   return (
-    <div className="flex min-h-screen bg-[var(--bg)]">
+    <div className="flex min-h-screen bg-[var(--bg)] relative">
+      {/* Mobile Header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[var(--card)] border-b border-[var(--border)] z-40 flex items-center justify-between px-6">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center text-white font-bold">A</div>
+          <span className="font-display font-bold text-lg tracking-tight">ADMIN <span className="text-brand">PANEL</span></span>
+        </div>
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="p-2 rounded-xl bg-[var(--bg)] border border-[var(--border)]"
+        >
+          {isSidebarOpen ? <X size={20} /> : <LayoutGrid size={20} />}
+        </button>
+      </div>
+
+      {/* Sidebar Overlay */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarOpen(false)}
+            className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Admin Sidebar */}
-      <aside className="w-64 border-r border-[var(--border)] flex flex-col p-6 gap-8 bg-[var(--bg)]">
+      <aside className={cn(
+        "fixed lg:static inset-y-0 left-0 w-72 border-r border-[var(--border)] flex flex-col p-6 gap-8 bg-[var(--bg)] z-50 transition-transform lg:translate-x-0",
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
         <div className="flex items-center gap-3 mb-4 cursor-pointer" onClick={onBack}>
           <div className="w-10 h-10 bg-brand rounded-xl flex items-center justify-center text-white">
             <Terminal size={20} />
@@ -137,16 +189,16 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
         </div>
 
         <nav className="flex-1 space-y-1">
-          <div onClick={() => setActiveTab('overview')}>
+          <div onClick={() => { setActiveTab('overview'); setIsSidebarOpen(false); }}>
             <AdminSidebarItem icon={<LayoutGrid size={18} />} label={t('overview')} active={activeTab === 'overview'} />
           </div>
-          <div onClick={() => setActiveTab('users')}>
+          <div onClick={() => { setActiveTab('users'); setIsSidebarOpen(false); }}>
             <AdminSidebarItem icon={<Users size={18} />} label={t('userDirectory')} active={activeTab === 'users'} />
           </div>
-          <div onClick={() => setActiveTab('subscriptions')}>
+          <div onClick={() => { setActiveTab('subscriptions'); setIsSidebarOpen(false); }}>
             <AdminSidebarItem icon={<DollarSign size={18} />} label="Subscriptions" active={activeTab === 'subscriptions'} />
           </div>
-          <div onClick={() => setActiveTab('logs')}>
+          <div onClick={() => { setActiveTab('logs'); setIsSidebarOpen(false); }}>
             <AdminSidebarItem icon={<Terminal size={18} />} label={t('systemLogs')} active={activeTab === 'logs'} />
           </div>
         </nav>
@@ -172,10 +224,10 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
       </aside>
 
       {/* Admin Main */}
-      <main className="flex-1 p-10 overflow-y-auto">
-        <header className="flex justify-between items-center mb-10">
+      <main className="flex-1 p-6 lg:p-10 overflow-y-auto pt-24 lg:pt-10">
+        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-10">
           <div>
-            <h1 className="text-3xl font-display font-bold tracking-tight mb-1">
+            <h1 className="text-2xl lg:text-3xl font-display font-bold tracking-tight mb-1">
               {activeTab === 'overview' ? t('overview') : 
                activeTab === 'users' ? t('userDirectory') : 
                activeTab === 'subscriptions' ? 'Subscriptions' : t('systemLogs')}
@@ -194,7 +246,7 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
         {activeTab === 'overview' ? (
           <>
             {/* Stats Grid */}
-            <div className="grid grid-cols-4 gap-6 mb-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
               <AdminStatCard 
                 label={t('totalUsers')} 
                 value={metrics.totalUsers.toLocaleString()} 
@@ -222,17 +274,28 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
             </div>
 
             {/* Main Admin Content */}
-            <div className="grid grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Modules Control */}
-              <div className="p-8 rounded-[2rem] bg-[var(--card)] border border-[var(--border)]">
+              <div className="p-6 lg:p-8 rounded-[2rem] bg-[var(--card)] border border-[var(--border)]">
                 <div className="flex justify-between items-center mb-8">
                   <div>
                     <h3 className="font-bold text-lg">Control de Módulos</h3>
                     <p className="text-xs opacity-40">Activa o desactiva funciones para los usuarios.</p>
                   </div>
+                  <button 
+                    onClick={handleSeedModules}
+                    className="p-2 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[10px] font-bold uppercase tracking-widest hover:bg-[var(--border)] transition-colors"
+                    title="Cargar módulos iniciales"
+                  >
+                    <RefreshCw size={14} className="opacity-40" />
+                  </button>
                 </div>
                 <div className="space-y-4">
-                  {modules.map((mod) => (
+                  {loadingModules ? (
+                    <div className="flex items-center justify-center py-12">
+                      <RefreshCw size={24} className="animate-spin opacity-20" />
+                    </div>
+                  ) : modules.length > 0 ? modules.map((mod) => (
                     <div key={mod.id} className="flex items-center justify-between p-4 rounded-2xl bg-[var(--bg)] border border-[var(--border)]">
                       <div>
                         <p className="text-sm font-bold">{mod.name}</p>
@@ -251,12 +314,16 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
                         )} />
                       </button>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="text-center py-12 border-2 border-dashed border-[var(--border)] rounded-3xl">
+                      <p className="text-sm opacity-20 italic">No hay módulos registrados en la base de datos.</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Chart Placeholder */}
-              <div className="p-8 rounded-[2rem] bg-[var(--card)] border border-[var(--border)]">
+              <div className="p-6 lg:p-8 rounded-[2rem] bg-[var(--card)] border border-[var(--border)]">
                 <div className="flex justify-between items-center mb-8">
                   <div>
                     <h3 className="font-bold text-lg">Processing Equilibrium</h3>
@@ -264,7 +331,7 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
                   </div>
                 </div>
                 
-                <div className="h-64 flex items-end gap-4 px-4">
+                <div className="h-64 flex items-end gap-2 sm:gap-4 px-2 sm:px-4">
                   {[40, 70, 100, 60, 45, 30].map((h, i) => (
                     <div key={i} className="flex-1 flex flex-col items-center gap-3">
                       <motion.div 
@@ -275,7 +342,7 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
                           i === 2 ? "bg-amber-200" : "bg-[var(--border)] opacity-50"
                         )}
                       />
-                      <span className="text-[10px] font-bold opacity-30">{['08:00', '12:00', 'CURRENT', '20:00', '00:00', '04:00'][i]}</span>
+                      <span className="text-[8px] sm:text-[10px] font-bold opacity-30">{['08:00', '12:00', 'CURRENT', '20:00', '00:00', '04:00'][i]}</span>
                     </div>
                   ))}
                 </div>
@@ -284,14 +351,14 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
           </>
         ) : activeTab === 'users' ? (
           <div className="rounded-[2rem] bg-[var(--card)] border border-[var(--border)] overflow-hidden">
-            <div className="p-8 border-b border-[var(--border)] flex justify-between items-center">
+            <div className="p-6 lg:p-8 border-b border-[var(--border)] flex justify-between items-center">
               <div>
                 <h3 className="font-bold text-lg">User Directory</h3>
                 <p className="text-xs opacity-40">Manage and monitor your user base.</p>
               </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse min-w-[800px]">
                 <thead>
                   <tr className="bg-[var(--bg)]/50">
                     <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest opacity-30">User</th>

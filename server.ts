@@ -183,6 +183,23 @@ async function startServer() {
     }
   });
 
+  app.post("/api/admin/modules/seed", async (req, res) => {
+    try {
+      await pool.query(`
+        INSERT INTO app_modules (name, description, is_active) 
+        SELECT 'Extracción Masiva (Excel)', 'Permite exportar datos clave de múltiples XMLs a una hoja de cálculo Excel.', FALSE
+        WHERE NOT EXISTS (SELECT 1 FROM app_modules WHERE name = 'Extracción Masiva (Excel)');
+        
+        INSERT INTO app_modules (name, description, is_active)
+        SELECT 'Validación Estatus SAT', 'Consulta en tiempo real si el UUID del CFDI está vigente o cancelado en el SAT.', FALSE
+        WHERE NOT EXISTS (SELECT 1 FROM app_modules WHERE name = 'Validación Estatus SAT');
+      `);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: "Error seeding modules" });
+    }
+  });
+
   app.get("/api/admin/users", async (req, res) => {
     try {
       const result = await pool.query(
@@ -443,13 +460,17 @@ async function startServer() {
   });
 
   // Vite middleware for development
+  console.log(`🌍 Server Mode: ${process.env.NODE_ENV || 'development'}`);
+  
   if (process.env.NODE_ENV !== "production") {
+    console.log("🚀 Starting Vite in development mode (Middleware)...");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
+    console.log("📦 Serving production build from /dist...");
     // Production static serving
     const distPath = path.resolve(process.cwd(), "dist");
     app.use(express.static(distPath));
