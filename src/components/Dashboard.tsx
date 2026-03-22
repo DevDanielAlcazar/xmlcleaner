@@ -338,13 +338,13 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
             <SidebarItem icon={<Settings size={20} />} label={t('preferences')} active={activeTab === 'preferences'} />
           </div>
           
-          {/* Independent Modules */}
-          {!loadingModules && modules.find(m => m.name.includes('Excel'))?.is_active && (
+          {/* Independent Modules - Only for Pro Unlimited */}
+          {!loadingModules && plan === "Pro Unlimited" && modules.find(m => m.name.includes('Excel'))?.is_active && (
             <div onClick={() => { setActiveTab('excel'); setIsSidebarOpen(false); }}>
               <SidebarItem icon={<FileCode size={20} />} label="Extraer Excel" active={activeTab === 'excel'} />
             </div>
           )}
-          {!loadingModules && modules.find(m => m.name.includes('SAT'))?.is_active && (
+          {!loadingModules && plan === "Pro Unlimited" && modules.find(m => m.name.includes('SAT'))?.is_active && (
             <div onClick={() => { setActiveTab('sat'); setIsSidebarOpen(false); }}>
               <SidebarItem icon={<Globe size={20} />} label="Validador SAT" active={activeTab === 'sat'} />
             </div>

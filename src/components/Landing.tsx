@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "../hooks/useLanguage";
 import { useTheme } from "../hooks/useTheme";
-import { Sun, Moon, Sunset, Globe, CheckCircle2, ShieldCheck, Key, Mail, User, Lock, AlertCircle } from "lucide-react";
+import { Sun, Moon, Sunset, Globe, CheckCircle2, ShieldCheck, Key, Mail, User, Lock, AlertCircle, Zap, FileCode } from "lucide-react";
 import { cn } from "../utils/cn";
 import React, { useState } from "react";
 
@@ -278,7 +278,7 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
             transition={{ delay: 0.2 }}
             className="text-xl opacity-60 max-w-2xl mx-auto mb-12 leading-relaxed"
           >
-            {t('heroSub')}
+            {t('heroSubPro')}
           </motion.p>
 
           <motion.div 
@@ -300,6 +300,31 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
               {t('freeCredits')}
             </div>
           </motion.div>
+        </div>
+
+        {/* Modules Section */}
+        <div className="mt-32 grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-sm">
+            <div className="w-12 h-12 bg-brand/20 text-brand rounded-2xl flex items-center justify-center mb-6">
+              <Zap size={24} />
+            </div>
+            <h3 className="text-xl font-bold mb-2">{t('moduleCleaningTitle')}</h3>
+            <p className="text-sm opacity-60 leading-relaxed">{t('moduleCleaningDesc')}</p>
+          </div>
+          <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-sm">
+            <div className="w-12 h-12 bg-emerald-500/20 text-emerald-500 rounded-2xl flex items-center justify-center mb-6">
+              <FileCode size={24} />
+            </div>
+            <h3 className="text-xl font-bold mb-2">{t('moduleExcelTitle')}</h3>
+            <p className="text-sm opacity-60 leading-relaxed">{t('moduleExcelDesc')}</p>
+          </div>
+          <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-sm">
+            <div className="w-12 h-12 bg-blue-500/20 text-blue-500 rounded-2xl flex items-center justify-center mb-6">
+              <Globe size={24} />
+            </div>
+            <h3 className="text-xl font-bold mb-2">{t('moduleSatTitle')}</h3>
+            <p className="text-sm opacity-60 leading-relaxed">{t('moduleSatDesc')}</p>
+          </div>
         </div>
 
         {/* Floating Mockup Preview */}
@@ -399,7 +424,8 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
               <ul className="space-y-4 mb-10 flex-1">
                 <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Créditos Ilimitados (10k)</li>
                 <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Reparación Total</li>
-                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Alertas Inteligentes</li>
+                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Módulo Extraer Excel</li>
+                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Módulo Validador SAT</li>
                 <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Soporte Prioritario</li>
               </ul>
               <button onClick={() => setAuthMode('register')} className="w-full py-4 rounded-2xl bg-brand text-white font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] transition-transform">Suscribirse</button>
