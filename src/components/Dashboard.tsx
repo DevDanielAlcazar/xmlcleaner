@@ -39,7 +39,7 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 
 export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAdmin: () => void, onLogout: () => void }) {
   const { t, lang, setLang } = useLanguage();
   const { theme, setTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<'panel' | 'history' | 'billing' | 'preferences'>('panel');
+  const [activeTab, setActiveTab] = useState<'panel' | 'history' | 'billing' | 'preferences' | 'excel' | 'sat'>('panel');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [results, setResults] = useState<CleanResult[]>([]);
@@ -337,6 +337,19 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
           <div onClick={() => { setActiveTab('preferences'); setIsSidebarOpen(false); }}>
             <SidebarItem icon={<Settings size={20} />} label={t('preferences')} active={activeTab === 'preferences'} />
           </div>
+          
+          {/* Independent Modules */}
+          {!loadingModules && modules.find(m => m.name.includes('Excel'))?.is_active && (
+            <div onClick={() => { setActiveTab('excel'); setIsSidebarOpen(false); }}>
+              <SidebarItem icon={<FileCode size={20} />} label="Extraer Excel" active={activeTab === 'excel'} />
+            </div>
+          )}
+          {!loadingModules && modules.find(m => m.name.includes('SAT'))?.is_active && (
+            <div onClick={() => { setActiveTab('sat'); setIsSidebarOpen(false); }}>
+              <SidebarItem icon={<Globe size={20} />} label="Validador SAT" active={activeTab === 'sat'} />
+            </div>
+          )}
+
           {user?.isAdmin && (
             <div onClick={onAdmin}>
               <SidebarItem icon={<Terminal size={20} />} label="Admin" />
@@ -496,25 +509,6 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                           <Download size={16} />
                           {t('exportAll')}
                         </button>
-                        {!loadingModules && modules.find(m => m.id === 1)?.is_active && (
-                          <button 
-                            onClick={exportToExcel}
-                            className="flex-1 sm:flex-none bg-emerald-500 text-white px-4 lg:px-6 py-3 rounded-full text-xs lg:text-sm font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-emerald-500/20"
-                          >
-                            <FileCode size={16} />
-                            Excel
-                          </button>
-                        )}
-                        {!loadingModules && modules.find(m => m.id === 2)?.is_active && (
-                          <button 
-                            onClick={validateSAT}
-                            disabled={validatingSAT}
-                            className="flex-1 sm:flex-none bg-blue-500 text-white px-4 lg:px-6 py-3 rounded-full text-xs lg:text-sm font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-blue-500/20 disabled:opacity-50"
-                          >
-                            {validatingSAT ? <RefreshCw size={16} className="animate-spin" /> : <Globe size={16} />}
-                            SAT
-                          </button>
-                        )}
                       </div>
                     </div>
                     
@@ -610,6 +604,122 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                 </div>
               </div>
             </>
+          ) : activeTab === 'excel' ? (
+            <div className="lg:col-span-3 p-6 lg:p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h2 className="text-2xl font-display font-bold">Extracción Masiva a Excel</h2>
+                  <p className="text-sm opacity-40">Sube tus XMLs para generar un reporte detallado en Excel.</p>
+                </div>
+                <FileCode size={32} className="text-emerald-500 opacity-20" />
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div 
+                  {...getRootProps()} 
+                  className="aspect-video rounded-[2rem] border-2 border-dashed border-[var(--border)] bg-[var(--bg)] flex flex-col items-center justify-center p-8 cursor-pointer hover:border-emerald-500/50 transition-colors"
+                >
+                  <input {...getInputProps()} />
+                  <Upload size={32} className="text-emerald-500 mb-4" />
+                  <p className="font-bold text-center">Arrastra tus XMLs aquí</p>
+                  <p className="text-xs opacity-40 mt-2">Solo archivos .xml</p>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="p-6 rounded-3xl bg-emerald-50 border border-emerald-100">
+                    <h4 className="font-bold text-emerald-900 mb-2 flex items-center gap-2">
+                      <CheckCircle2 size={16} />
+                      ¿Qué extraemos?
+                    </h4>
+                    <ul className="text-xs text-emerald-800 space-y-2 opacity-80">
+                      <li>• Datos del Emisor y Receptor (RFC, Nombre)</li>
+                      <li>• Conceptos, Cantidades y Unidades</li>
+                      <li>• Impuestos Trasladados y Retenidos</li>
+                      <li>• UUID, Fecha y Folio Fiscal</li>
+                    </ul>
+                  </div>
+                  
+                  {files.length > 0 && (
+                    <button 
+                      onClick={exportToExcel}
+                      className="w-full py-4 bg-emerald-500 text-white rounded-2xl font-bold shadow-lg shadow-emerald-500/20 hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
+                    >
+                      <Download size={18} />
+                      Generar Excel ({files.length} archivos)
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : activeTab === 'sat' ? (
+            <div className="lg:col-span-3 p-6 lg:p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h2 className="text-2xl font-display font-bold">Validador de Estatus SAT</h2>
+                  <p className="text-sm opacity-40">Verifica la vigencia de tus CFDI directamente en los servidores del SAT.</p>
+                </div>
+                <Globe size={32} className="text-blue-500 opacity-20" />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div 
+                  {...getRootProps()} 
+                  className="aspect-video rounded-[2rem] border-2 border-dashed border-[var(--border)] bg-[var(--bg)] flex flex-col items-center justify-center p-8 cursor-pointer hover:border-blue-500/50 transition-colors"
+                >
+                  <input {...getInputProps()} />
+                  <Search size={32} className="text-blue-500 mb-4" />
+                  <p className="font-bold text-center">Sube los XMLs a validar</p>
+                  <p className="text-xs opacity-40 mt-2">Consulta en tiempo real</p>
+                </div>
+
+                <div className="space-y-4">
+                  {files.length > 0 && !processing && (
+                    <button 
+                      onClick={async () => {
+                        setProcessing(true);
+                        const newResults = [];
+                        for(const f of files) {
+                          const res = await cleanXML(f);
+                          newResults.push(res);
+                        }
+                        setResults(newResults);
+                        setProcessing(false);
+                        // Trigger SAT validation automatically after parsing
+                        setTimeout(() => validateSAT(), 500);
+                      }}
+                      className="w-full py-4 bg-blue-500 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
+                    >
+                      {validatingSAT ? <RefreshCw size={18} className="animate-spin" /> : <Zap size={18} />}
+                      Iniciar Validación ({files.length} archivos)
+                    </button>
+                  )}
+
+                  {results.some(r => r.satStatus) && (
+                    <div className="p-6 rounded-3xl bg-blue-50 border border-blue-100">
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="font-bold text-blue-900">Resultados SAT</h4>
+                        <span className="text-[10px] bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full font-bold">
+                          {results.filter(r => r.satStatus?.estado === 'Vigente').length} VIGENTES
+                        </span>
+                      </div>
+                      <div className="space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
+                        {results.filter(r => r.satStatus).map((r, i) => (
+                          <div key={i} className="flex justify-between items-center p-2 bg-white rounded-lg border border-blue-100">
+                            <span className="text-[10px] font-medium truncate max-w-[150px]">{r.originalName}</span>
+                            <span className={cn(
+                              "text-[9px] font-bold px-2 py-0.5 rounded-full",
+                              r.satStatus?.estado === 'Vigente' ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                            )}>
+                              {r.satStatus?.estado}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           ) : activeTab === 'history' ? (
             <div className="lg:col-span-3 p-6 lg:p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
               <h2 className="text-2xl font-display font-bold mb-8">{t('history')}</h2>
