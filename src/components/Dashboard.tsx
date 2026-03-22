@@ -653,26 +653,30 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
             </div>
           ) : activeTab === 'sat' ? (
             <div className="lg:col-span-3 p-6 lg:p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
-              <div className="flex justify-between items-center mb-8">
+              <div className="flex justify-between items-center mb-12">
                 <div>
-                  <h2 className="text-2xl font-display font-bold">Validador de Estatus SAT</h2>
-                  <p className="text-sm opacity-40">Verifica la vigencia de tus CFDI directamente en los servidores del SAT.</p>
+                  <h2 className="text-3xl font-display font-bold mb-2">Estatus Legal SAT</h2>
+                  <p className="text-sm opacity-40 max-w-md">Validación masiva y en tiempo real directamente con los servidores oficiales del SAT.</p>
                 </div>
-                <Globe size={32} className="text-blue-500 opacity-20" />
+                <div className="w-16 h-16 rounded-3xl bg-blue-500/10 flex items-center justify-center text-blue-500">
+                  <Globe size={32} />
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div 
-                  {...getRootProps()} 
-                  className="aspect-video rounded-[2rem] border-2 border-dashed border-[var(--border)] bg-[var(--bg)] flex flex-col items-center justify-center p-8 cursor-pointer hover:border-blue-500/50 transition-colors"
-                >
-                  <input {...getInputProps()} />
-                  <Search size={32} className="text-blue-500 mb-4" />
-                  <p className="font-bold text-center">Sube los XMLs a validar</p>
-                  <p className="text-xs opacity-40 mt-2">Consulta en tiempo real</p>
-                </div>
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
+                <div className="lg:col-span-2 space-y-6">
+                  <div 
+                    {...getRootProps()} 
+                    className="aspect-square rounded-[2.5rem] border-2 border-dashed border-[var(--border)] bg-[var(--bg)] flex flex-col items-center justify-center p-8 cursor-pointer hover:border-blue-500/50 transition-all group"
+                  >
+                    <input {...getInputProps()} />
+                    <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 mb-6 group-hover:scale-110 transition-transform">
+                      <Search size={32} />
+                    </div>
+                    <p className="font-bold text-center text-lg">Sube tus XMLs</p>
+                    <p className="text-xs opacity-40 mt-2 text-center">Arrastra o haz clic para seleccionar los archivos a validar</p>
+                  </div>
 
-                <div className="space-y-4">
                   {files.length > 0 && !processing && (
                     <button 
                       onClick={async () => {
@@ -684,37 +688,83 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                         }
                         setResults(newResults);
                         setProcessing(false);
-                        // Trigger SAT validation automatically after parsing
                         setTimeout(() => validateSAT(), 500);
                       }}
-                      className="w-full py-4 bg-blue-500 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
+                      className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-bold shadow-xl shadow-blue-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                     >
-                      {validatingSAT ? <RefreshCw size={18} className="animate-spin" /> : <Zap size={18} />}
-                      Iniciar Validación ({files.length} archivos)
+                      {validatingSAT ? <RefreshCw size={20} className="animate-spin" /> : <Zap size={20} />}
+                      Validar {files.length} Comprobantes
                     </button>
                   )}
+                </div>
 
-                  {results.some(r => r.satStatus) && (
-                    <div className="p-6 rounded-3xl bg-blue-50 border border-blue-100">
-                      <div className="flex justify-between items-center mb-4">
-                        <h4 className="font-bold text-blue-900">Resultados SAT</h4>
-                        <span className="text-[10px] bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full font-bold">
-                          {results.filter(r => r.satStatus?.estado === 'Vigente').length} VIGENTES
-                        </span>
-                      </div>
-                      <div className="space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
-                        {results.filter(r => r.satStatus).map((r, i) => (
-                          <div key={i} className="flex justify-between items-center p-2 bg-white rounded-lg border border-blue-100">
-                            <span className="text-[10px] font-medium truncate max-w-[150px]">{r.originalName}</span>
-                            <span className={cn(
-                              "text-[9px] font-bold px-2 py-0.5 rounded-full",
-                              r.satStatus?.estado === 'Vigente' ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
-                            )}>
-                              {r.satStatus?.estado}
-                            </span>
+                <div className="lg:col-span-3">
+                  {results.some(r => r.satStatus) ? (
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-bold text-lg flex items-center gap-2">
+                          <CheckCircle2 size={20} className="text-blue-500" />
+                          Resultados de Consulta
+                        </h4>
+                        <div className="flex gap-2">
+                          <div className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-[10px] font-bold uppercase tracking-wider">
+                            {results.filter(r => r.satStatus?.estado === 'Vigente').length} Vigentes
                           </div>
+                          <div className="px-3 py-1 rounded-full bg-rose-500/10 text-rose-600 text-[10px] font-bold uppercase tracking-wider">
+                            {results.filter(r => r.satStatus && r.satStatus.estado !== 'Vigente').length} Otros
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 max-h-[500px] overflow-y-auto custom-scrollbar pr-4">
+                        {results.filter(r => r.satStatus).map((r, i) => (
+                          <motion.div 
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.05 }}
+                            key={i} 
+                            className="p-5 bg-[var(--bg)] rounded-[1.5rem] border border-[var(--border)] hover:border-blue-500/30 transition-colors shadow-sm"
+                          >
+                            <div className="flex justify-between items-start mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className={cn(
+                                  "w-10 h-10 rounded-xl flex items-center justify-center",
+                                  r.satStatus?.estado === 'Vigente' ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
+                                )}>
+                                  <FileText size={20} />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold truncate max-w-[150px] sm:max-w-[250px]">{r.originalName}</p>
+                                  <p className="text-[10px] opacity-40 font-mono">{r.warnings[0] || 'CFDI 4.0'}</p>
+                                </div>
+                              </div>
+                              <span className={cn(
+                                "text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest",
+                                r.satStatus?.estado === 'Vigente' ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
+                              )}>
+                                {r.satStatus?.estado}
+                              </span>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-6 pt-4 border-t border-[var(--border)]">
+                              <div>
+                                <p className="text-[9px] font-bold opacity-30 uppercase mb-1">{t('satCode')}</p>
+                                <p className="text-[11px] font-medium leading-tight">{r.satStatus?.codigo}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[9px] font-bold opacity-30 uppercase mb-1">{t('satCancelable')}</p>
+                                <p className="text-[11px] font-medium">{r.satStatus?.cancelable}</p>
+                              </div>
+                            </div>
+                          </motion.div>
                         ))}
                       </div>
+                    </div>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center opacity-20 text-center p-12">
+                      <Globe size={64} className="mb-6" />
+                      <p className="text-xl font-display font-bold">Sin resultados</p>
+                      <p className="text-sm">Sube tus archivos para iniciar la validación legal</p>
                     </div>
                   )}
                 </div>

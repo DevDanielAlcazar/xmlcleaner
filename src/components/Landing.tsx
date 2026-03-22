@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "../hooks/useLanguage";
 import { useTheme } from "../hooks/useTheme";
-import { Sun, Moon, Sunset, Globe, CheckCircle2, ShieldCheck, Key, Mail, User, Lock, AlertCircle, Zap, FileCode } from "lucide-react";
+import { Sun, Moon, Sunset, Globe, CheckCircle2, ShieldCheck, Key, Mail, User, Lock, AlertCircle, Zap, FileCode, Search } from "lucide-react";
 import { cn } from "../utils/cn";
 import React, { useState } from "react";
 
@@ -342,31 +342,31 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
               <div className="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mb-6">
-                <CheckCircle2 size={24} />
+                <ShieldCheck size={24} />
               </div>
-              <h3 className="text-xl font-bold mb-4">Reparación Total</h3>
+              <h3 className="text-xl font-bold mb-4">Auditoría Estructural</h3>
               <p className="text-sm opacity-60 leading-relaxed">
-                Algoritmos avanzados que reconstruyen nodos dañados y eliminan caracteres invisibles que bloquean tus trámites.
+                Validamos cada nodo y cálculo de impuestos. No solo limpiamos el archivo, aseguramos que sea fiscalmente perfecto para tus deducciones.
               </p>
             </div>
             
             <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
               <div className="w-12 h-12 bg-brand/10 text-brand rounded-2xl flex items-center justify-center mb-6">
-                <AlertCircle size={24} />
+                <Zap size={24} />
               </div>
-              <h3 className="text-xl font-bold mb-4">Alertas Inteligentes</h3>
+              <h3 className="text-xl font-bold mb-4">Reparación de Datos</h3>
               <p className="text-sm opacity-60 leading-relaxed">
-                Diagnóstico instantáneo de errores CFDI 4.0. Detectamos discrepancias en RFC y versiones antes de que el SAT lo haga.
+                Eliminamos caracteres invisibles y corregimos errores de codificación que bloquean la carga en sistemas contables y del SAT.
               </p>
             </div>
 
             <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
               <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mb-6">
-                <ShieldCheck size={24} />
+                <Search size={24} />
               </div>
-              <h3 className="text-xl font-bold mb-4">Seguridad Bancaria</h3>
+              <h3 className="text-xl font-bold mb-4">Inteligencia Fiscal</h3>
               <p className="text-sm opacity-60 leading-relaxed">
-                Tus datos viajan cifrados y se eliminan automáticamente. Cumplimos con los estándares más altos de privacidad.
+                Detección automática de discrepancias en RFC, versiones de CFDI y métodos de pago antes de procesar tus lotes.
               </p>
             </div>
           </div>
@@ -384,9 +384,9 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             {[
-              { step: "01", title: "Sube tus archivos", desc: "Arrastra tus XML o archivos ZIP directamente a la plataforma." },
-              { step: "02", title: "Procesamiento IA", desc: "Nuestro motor analiza y repara errores de formato y caracteres ilegales." },
-              { step: "03", title: "Descarga Directa", desc: "Obtén tus archivos limpios y listos para ser procesados por cualquier sistema." }
+              { step: "01", title: "Carga Inteligente", desc: "Sube tus archivos XML o ZIP. Nuestro sistema identifica automáticamente la versión y estructura de cada comprobante." },
+              { step: "02", title: "Auditoría y Reparación", desc: "Ejecutamos más de 20 reglas de validación, corregimos errores de cálculo y eliminamos basura digital." },
+              { step: "03", title: "Entrega Certificada", desc: "Descarga tus archivos optimizados o genera reportes financieros en Excel listos para tu contabilidad." }
             ].map((s, i) => (
               <div key={i} className="relative group">
                 <div className="text-8xl font-display font-bold opacity-5 absolute -top-12 -left-4 group-hover:text-brand transition-colors">{s.step}</div>
