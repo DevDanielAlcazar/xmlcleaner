@@ -184,40 +184,79 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
     a.click();
   };
 
-  const exportToExcel = () => {
-    const data = results.map(res => {
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(res.cleanedContent, "text/xml");
-      const comprobante = xmlDoc.getElementsByTagName("cfdi:Comprobante")[0];
-      const emisor = xmlDoc.getElementsByTagName("cfdi:Emisor")[0];
-      const receptor = xmlDoc.getElementsByTagName("cfdi:Receptor")[0];
-      const timbre = xmlDoc.getElementsByTagName("tfd:TimbreFiscalDigital")[0];
+  const exportToExcel = async () => {
+    if (files.length === 0) return;
+    
+    setProcessing(true);
+    
+    try {
+      // First process all files to get their content if they haven't been processed yet
+      // In the Excel tab, we might just have raw files that haven't gone through cleanXML
+      const xmlContents = await Promise.all(files.map(async (file) => {
+        const text = await file.text();
+        return { name: file.name, content: text };
+      }));
 
-      return {
-        "Archivo": res.originalName,
-        "Fecha": comprobante?.getAttribute("Fecha") || "",
-        "Folio": comprobante?.getAttribute("Folio") || "",
-        "Serie": comprobante?.getAttribute("Serie") || "",
-        "UUID": timbre?.getAttribute("UUID") || "",
-        "RFC Emisor": emisor?.getAttribute("Rfc") || "",
-        "Nombre Emisor": emisor?.getAttribute("Nombre") || "",
-        "RFC Receptor": receptor?.getAttribute("Rfc") || "",
-        "Nombre Receptor": receptor?.getAttribute("Nombre") || "",
-        "Uso CFDI": receptor?.getAttribute("UsoCFDI") || "",
-        "Metodo Pago": comprobante?.getAttribute("MetodoPago") || "",
-        "Forma Pago": comprobante?.getAttribute("FormaPago") || "",
-        "Subtotal": parseFloat(comprobante?.getAttribute("SubTotal") || "0"),
-        "Descuento": parseFloat(comprobante?.getAttribute("Descuento") || "0"),
-        "Total": parseFloat(comprobante?.getAttribute("Total") || "0"),
-        "Moneda": comprobante?.getAttribute("Moneda") || "",
-        "Tipo Comprobante": comprobante?.getAttribute("TipoDeComprobante") || ""
-      };
-    });
+      const data = xmlContents.map(({ name, content }) => {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(content, "text/xml");
+        
+        // Helper to find element regardless of namespace prefix (cfdi:, etc.)
+        const getElement = (tagName: string) => {
+          const elements = xmlDoc.getElementsByTagNameNS("*", tagName);
+          return elements.length > 0 ? elements[0] : xmlDoc.getElementsByTagName(tagName)[0] || xmlDoc.getElementsByTagName(`cfdi:${tagName}`)[0];
+        };
 
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "XML Data");
-    XLSX.writeFile(workbook, `reporte_xml_${Date.now()}.xlsx`);
+        const comprobante = getElement("Comprobante");
+        const emisor = getElement("Emisor");
+        const receptor = getElement("Receptor");
+        const timbre = getElement("TimbreFiscalDigital");
+        
+        // Extract concepts
+        const conceptosNode = getElement("Conceptos");
+        const conceptosList = conceptosNode ? Array.from(conceptosNode.getElementsByTagNameNS("*", "Concepto")).length > 0 
+          ? Array.from(conceptosNode.getElementsByTagNameNS("*", "Concepto"))
+          : Array.from(conceptosNode.getElementsByTagName("cfdi:Concepto")) 
+          : [];
+        
+        const descripciones = conceptosList.map(c => c.getAttribute("Descripcion")).filter(Boolean).join(" | ");
+
+        return {
+          "Archivo": name,
+          "Fecha": comprobante?.getAttribute("Fecha") || "",
+          "Folio": comprobante?.getAttribute("Folio") || "",
+          "Serie": comprobante?.getAttribute("Serie") || "",
+          "UUID": timbre?.getAttribute("UUID") || "",
+          "RFC Emisor": emisor?.getAttribute("Rfc") || "",
+          "Nombre Emisor": emisor?.getAttribute("Nombre") || "",
+          "RFC Receptor": receptor?.getAttribute("Rfc") || "",
+          "Nombre Receptor": receptor?.getAttribute("Nombre") || "",
+          "Uso CFDI": receptor?.getAttribute("UsoCFDI") || "",
+          "Metodo Pago": comprobante?.getAttribute("MetodoPago") || "",
+          "Forma Pago": comprobante?.getAttribute("FormaPago") || "",
+          "Conceptos": descripciones || "",
+          "Subtotal": parseFloat(comprobante?.getAttribute("SubTotal") || "0"),
+          "Descuento": parseFloat(comprobante?.getAttribute("Descuento") || "0"),
+          "Total": parseFloat(comprobante?.getAttribute("Total") || "0"),
+          "Moneda": comprobante?.getAttribute("Moneda") || "",
+          "Tipo Comprobante": comprobante?.getAttribute("TipoDeComprobante") || ""
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "XML Data");
+      XLSX.writeFile(workbook, `reporte_xml_${Date.now()}.xlsx`);
+      
+      // Clear files after successful download
+      setFiles([]);
+      setNotification({ type: 'success', message: `Reporte generado con ${data.length} registros. Lista limpiada.` });
+    } catch (error) {
+      console.error("Error generating Excel:", error);
+      setNotification({ type: 'error', message: 'Error al generar el reporte Excel. Verifica los archivos.' });
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const validateSAT = async () => {
