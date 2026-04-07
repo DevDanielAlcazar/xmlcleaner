@@ -259,17 +259,17 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
     }
   };
 
-  const validateSAT = async () => {
-    if (results.length === 0) return;
+  const validateSAT = async (itemsToValidate = results) => {
+    if (itemsToValidate.length === 0) return;
 
     // Enforce Free Starter limit for SAT validation too
-    if (plan === "Free Starter" && results.length > 5) {
+    if (plan === "Free Starter" && itemsToValidate.length > 5) {
       setNotification({ type: 'error', message: 'El plan Free Starter solo permite validar hasta 5 archivos por lote en el SAT.' });
       return;
     }
 
     setValidatingSAT(true);
-    const updatedResults = [...results];
+    const updatedResults = [...itemsToValidate];
 
     for (let i = 0; i < updatedResults.length; i++) {
       const res = updatedResults[i];
@@ -277,10 +277,17 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
 
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(res.cleanedContent, "text/xml");
-      const comprobante = xmlDoc.getElementsByTagName("cfdi:Comprobante")[0];
-      const emisor = xmlDoc.getElementsByTagName("cfdi:Emisor")[0];
-      const receptor = xmlDoc.getElementsByTagName("cfdi:Receptor")[0];
-      const timbre = xmlDoc.getElementsByTagName("tfd:TimbreFiscalDigital")[0];
+      
+      // Helper to find element regardless of namespace prefix
+      const getElement = (tagName: string) => {
+        const elements = xmlDoc.getElementsByTagNameNS("*", tagName);
+        return elements.length > 0 ? elements[0] : xmlDoc.getElementsByTagName(tagName)[0] || xmlDoc.getElementsByTagName(`cfdi:${tagName}`)[0];
+      };
+
+      const comprobante = getElement("Comprobante");
+      const emisor = getElement("Emisor");
+      const receptor = getElement("Receptor");
+      const timbre = getElement("TimbreFiscalDigital");
 
       const re = emisor?.getAttribute("Rfc");
       const rr = receptor?.getAttribute("Rfc");
@@ -295,11 +302,21 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
             body: JSON.stringify({ re, rr, tt, id })
           });
           const data = await response.json();
-          updatedResults[i] = { ...res, satStatus: data };
+          
+          if (response.ok) {
+            updatedResults[i] = { ...res, satStatus: data };
+          } else {
+            updatedResults[i] = { ...res, satStatus: { estado: "Error SAT", codigo: data.error || "Error interno del SAT", cancelable: "N/A" } };
+          }
           setResults([...updatedResults]); // Update UI progressively
         } catch (err) {
           console.error("Error validating SAT:", err);
+          updatedResults[i] = { ...res, satStatus: { estado: "Error de Conexión", codigo: "No se pudo conectar al SAT", cancelable: "N/A" } };
+          setResults([...updatedResults]);
         }
+      } else {
+        updatedResults[i] = { ...res, satStatus: { estado: "XML Inválido", codigo: "Faltan datos requeridos (RFC, Total, UUID)", cancelable: "N/A" } };
+        setResults([...updatedResults]);
       }
     }
     setValidatingSAT(false);
@@ -716,9 +733,11 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                     <p className="text-xs opacity-40 mt-2 text-center">Arrastra o haz clic para seleccionar los archivos a validar</p>
                   </div>
 
-                  {files.length > 0 && !processing && (
+                  {files.length > 0 && (
                     <button 
+                      disabled={processing || validatingSAT}
                       onClick={async () => {
+                        setValidatingSAT(true); // Show loading state immediately
                         setProcessing(true);
                         const newResults = [];
                         for(const f of files) {
@@ -727,12 +746,27 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                         }
                         setResults(newResults);
                         setProcessing(false);
-                        setTimeout(() => validateSAT(), 500);
+                        // Call validateSAT with the newly processed results
+                        await validateSAT(newResults);
                       }}
-                      className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-bold shadow-xl shadow-blue-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                      className={cn(
+                        "w-full py-5 rounded-[1.5rem] font-bold shadow-xl transition-all flex items-center justify-center gap-3",
+                        (processing || validatingSAT) 
+                          ? "bg-blue-600/50 text-white/80 cursor-not-allowed shadow-none" 
+                          : "bg-blue-600 text-white shadow-blue-600/20 hover:scale-[1.02] active:scale-[0.98]"
+                      )}
                     >
-                      {validatingSAT ? <RefreshCw size={20} className="animate-spin" /> : <Zap size={20} />}
-                      Validar {files.length} Comprobantes
+                      {(processing || validatingSAT) ? (
+                        <>
+                          <RefreshCw size={20} className="animate-spin" />
+                          {processing ? "Procesando XMLs..." : "Consultando al SAT..."}
+                        </>
+                      ) : (
+                        <>
+                          <Zap size={20} />
+                          Validar {files.length} Comprobantes
+                        </>
+                      )}
                     </button>
                   )}
                 </div>
