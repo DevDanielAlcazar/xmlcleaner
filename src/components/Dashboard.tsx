@@ -26,12 +26,16 @@ import {
   X,
   RefreshCw,
   FileCode,
-  BookOpen
+  BookOpen,
+  Printer,
+  FileImage
 } from "lucide-react";
 import { cn } from "../utils/cn";
 import { cleanXML, CleanResult } from "../utils/xmlCleaner";
 import JSZip from "jszip";
 import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 import { loadStripe } from "@stripe/stripe-js";
 
@@ -40,7 +44,7 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 
 export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAdmin: () => void, onLogout: () => void }) {
   const { t, lang, setLang } = useLanguage();
   const { theme, setTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<'panel' | 'history' | 'billing' | 'preferences' | 'excel' | 'sat' | 'guide'>('panel');
+  const [activeTab, setActiveTab] = useState<'panel' | 'history' | 'billing' | 'preferences' | 'excel' | 'sat' | 'guide' | 'pdf'>('panel');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [results, setResults] = useState<CleanResult[]>([]);
@@ -59,6 +63,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
   const [modules, setModules] = useState<any[]>([]);
   const [loadingModules, setLoadingModules] = useState(true);
   const [validatingSAT, setValidatingSAT] = useState(false);
+  const [pdfLogo, setPdfLogo] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -260,6 +265,186 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
     }
   };
 
+  const generatePDFs = async () => {
+    if (files.length === 0) return;
+    setProcessing(true);
+
+    try {
+      const xmlContents = await Promise.all(files.map(async (file) => {
+        const text = await file.text();
+        return { name: file.name, content: text };
+      }));
+
+      const zip = new JSZip();
+
+      for (const { name, content } of xmlContents) {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(content, "text/xml");
+        
+        const getElement = (tagName: string) => {
+          const elements = xmlDoc.getElementsByTagNameNS("*", tagName);
+          return elements.length > 0 ? elements[0] : xmlDoc.getElementsByTagName(tagName)[0] || xmlDoc.getElementsByTagName(`cfdi:${tagName}`)[0];
+        };
+
+        const comprobante = getElement("Comprobante");
+        const emisor = getElement("Emisor");
+        const receptor = getElement("Receptor");
+        const timbre = getElement("TimbreFiscalDigital");
+        
+        const conceptosNode = getElement("Conceptos");
+        const conceptosList = conceptosNode ? Array.from(conceptosNode.getElementsByTagNameNS("*", "Concepto")).length > 0 
+          ? Array.from(conceptosNode.getElementsByTagNameNS("*", "Concepto"))
+          : Array.from(conceptosNode.getElementsByTagName("cfdi:Concepto")) 
+          : [];
+
+        const doc = new jsPDF();
+        
+        // Add corporate styling to the PDF
+        const pdfWidth = doc.internal.pageSize.getWidth();
+        const pdfHeight = doc.internal.pageSize.getHeight();
+
+        // Header Background
+        doc.setFillColor(34, 40, 49); // Dark blue/grey
+        doc.rect(0, 0, pdfWidth, 40, 'F');
+
+        if (pdfLogo) {
+          doc.addImage(pdfLogo, 'PNG', 14, 10, 40, 20);
+        } else {
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(24);
+          doc.setFont("helvetica", "bold");
+          doc.text("EMPRESA SA DE CV", 14, 25);
+        }
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        const serieFolio = `${comprobante?.getAttribute("Serie") || ""} ${comprobante?.getAttribute("Folio") || ""}`.trim();
+        doc.text(`FACTURA ${serieFolio ? `NO. ${serieFolio}` : ''}`, pdfWidth - 14, 20, { align: 'right' });
+        doc.text(`UUID: ${timbre?.getAttribute("UUID") || "N/A"}`, pdfWidth - 14, 27, { align: 'right' });
+
+        // Emisor & Receptor Sections
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text("EMISOR", 14, 55);
+        doc.text("RECEPTOR", pdfWidth / 2 + 10, 55);
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(80, 80, 80);
+        
+        doc.text(`Razón Social: ${emisor?.getAttribute("Nombre") || "No especificado"}`, 14, 62);
+        doc.text(`RFC: ${emisor?.getAttribute("Rfc") || ""}`, 14, 67);
+        doc.text(`Régimen: ${emisor?.getAttribute("RegimenFiscal") || "N/A"}`, 14, 72);
+
+        doc.text(`Razón Social: ${receptor?.getAttribute("Nombre") || "No especificado"}`, pdfWidth / 2 + 10, 62);
+        doc.text(`RFC: ${receptor?.getAttribute("Rfc") || ""}`, pdfWidth / 2 + 10, 67);
+        doc.text(`Uso CFDI: ${receptor?.getAttribute("UsoCFDI") || "N/A"}`, pdfWidth / 2 + 10, 72);
+
+        // General Info Box
+        doc.setDrawColor(220, 220, 220);
+        doc.setFillColor(249, 250, 251);
+        doc.roundedRect(14, 85, pdfWidth - 28, 20, 3, 3, 'FD');
+        
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.text("Fecha", 20, 92);
+        doc.text("Moneda", 70, 92);
+        doc.text("Forma Pago", 120, 92);
+        doc.text("Método Pago", 160, 92);
+
+        doc.setFont("helvetica", "normal");
+        doc.text(comprobante?.getAttribute("Fecha") || "", 20, 99);
+        doc.text(comprobante?.getAttribute("Moneda") || "", 70, 99);
+        doc.text(comprobante?.getAttribute("FormaPago") || "", 120, 99);
+        doc.text(comprobante?.getAttribute("MetodoPago") || "", 160, 99);
+
+        // Conceptos Table
+        const tableData = conceptosList.map(c => [
+          c.getAttribute("ClaveProdServ") || "",
+          c.getAttribute("Cantidad") || "",
+          c.getAttribute("ClaveUnidad") || "",
+          c.getAttribute("Descripcion") || "",
+          `$${parseFloat(c.getAttribute("ValorUnitario") || "0").toFixed(2)}`,
+          `$${parseFloat(c.getAttribute("Importe") || "0").toFixed(2)}`
+        ]);
+
+        autoTable(doc, {
+          startY: 115,
+          head: [['Clave', 'Cant', 'Unidad', 'Descripción', 'Unitario', 'Importe']],
+          body: tableData,
+          theme: 'grid',
+          headStyles: { fillColor: [34, 40, 49], textColor: 255 },
+          styles: { fontSize: 8, cellPadding: 4, textColor: [50, 50, 50] },
+          columnStyles: {
+            0: { cellWidth: 20 },
+            1: { cellWidth: 15 },
+            2: { cellWidth: 15 },
+            4: { cellWidth: 25, halign: 'right' },
+            5: { cellWidth: 25, halign: 'right' }
+          }
+        });
+
+        // Totals
+        const finalY = (doc as any).lastAutoTable.finalY + 10;
+        doc.setFontSize(10);
+        
+        const subtotal = parseFloat(comprobante?.getAttribute("SubTotal") || "0").toFixed(2);
+        const descuento = parseFloat(comprobante?.getAttribute("Descuento") || "0").toFixed(2);
+        const total = parseFloat(comprobante?.getAttribute("Total") || "0").toFixed(2);
+
+        doc.setFont("helvetica", "normal");
+        doc.text("Subtotal:", pdfWidth - 50, finalY);
+        doc.text(`$${subtotal}`, pdfWidth - 14, finalY, { align: 'right' });
+        
+        let currentY = finalY;
+        if (descuento !== "0.00") {
+          currentY += 6;
+          doc.text("Descuento:", pdfWidth - 50, currentY);
+          doc.text(`$${descuento}`, pdfWidth - 14, currentY, { align: 'right' });
+        }
+
+        currentY += 8;
+        doc.setFont("helvetica", "bold");
+        doc.text("TOTAL:", pdfWidth - 50, currentY);
+        doc.text(`$${total}`, pdfWidth - 14, currentY, { align: 'right' });
+
+        // Footer
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(150, 150, 150);
+        doc.text("Este documento es una representación impresa de un CFDI.", pdfWidth / 2, pdfHeight - 20, { align: 'center' });
+        doc.text("Generado profesionalmente por la tecnología de XMLs PRO.", pdfWidth / 2, pdfHeight - 15, { align: 'center' });
+
+        const pdfBlob = doc.output("blob");
+        
+        if (files.length === 1) {
+           doc.save(`Factura_${name.replace('.xml', '')}.pdf`);
+        } else {
+           zip.file(`Factura_${name.replace('.xml', '')}.pdf`, pdfBlob);
+        }
+      }
+
+      if (files.length > 1) {
+        const content = await zip.generateAsync({ type: "blob" });
+        const url = URL.createObjectURL(content);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Facturas_PDF_${Date.now()}.zip`;
+        a.click();
+      }
+
+      setFiles([]);
+      setNotification({ type: 'success', message: `${files.length > 1 ? 'PDFs generados en ZIP' : 'PDF generado'}. Lista limpiada.` });
+    } catch (error) {
+      console.error("Error generating PDFs:", error);
+      setNotification({ type: 'error', message: 'Error al generar los PDFs. Verifica los archivos.' });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const validateSAT = async (itemsToValidate = results) => {
     if (itemsToValidate.length === 0) return;
 
@@ -407,6 +592,11 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
           {!loadingModules && plan === "Pro Unlimited" && modules.find(m => m.name.includes('SAT'))?.is_active && (
             <div onClick={() => { setActiveTab('sat'); setIsSidebarOpen(false); }}>
               <SidebarItem icon={<Globe size={20} />} label="Validador SAT" active={activeTab === 'sat'} />
+            </div>
+          )}
+          {!loadingModules && plan === "Pro Unlimited" && (
+            <div onClick={() => { setActiveTab('pdf'); setIsSidebarOpen(false); }}>
+              <SidebarItem icon={<Printer size={20} />} label="Representación Impresa" active={activeTab === 'pdf'} />
             </div>
           )}
 
@@ -847,6 +1037,84 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                 </div>
               </div>
             </div>
+          ) : activeTab === 'pdf' ? (
+            <div className="lg:col-span-3 p-6 lg:p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
+              <div className="flex justify-between items-center mb-12">
+                <div>
+                  <h2 className="text-3xl font-display font-bold mb-2">Representación Impresa PREMIUM</h2>
+                  <p className="text-sm opacity-40 max-w-md">Transforma XMLs en documentos PDF lujosos, corporativos y con tu marca.</p>
+                </div>
+                <div className="w-16 h-16 rounded-3xl bg-violet-500/10 flex items-center justify-center text-violet-500">
+                  <Printer size={32} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div className="space-y-4">
+                  <h3 className="font-bold flex items-center gap-2"><FileImage size={18} className="text-violet-500" /> Identidad Visual</h3>
+                  <label className="block w-full aspect-[21/9] rounded-[1.5rem] border-2 border-dashed border-[var(--border)] bg-[var(--bg)] flex flex-col items-center justify-center p-4 cursor-pointer hover:border-violet-500/50 transition-colors relative overflow-hidden group">
+                    <input 
+                      type="file" 
+                      accept="image/png, image/jpeg" 
+                      className="hidden" 
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setPdfLogo(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }} 
+                    />
+                    {pdfLogo ? (
+                      <div className="relative w-full h-full flex items-center justify-center p-4">
+                        <img src={pdfLogo} alt="Logo" className="max-h-full max-w-full object-contain" />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
+                          <span className="text-white font-bold text-sm">Cambiar Logotipo</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload size={24} className="text-violet-500 mb-2" />
+                        <p className="font-bold text-sm text-center">Sube tu logo corporativo</p>
+                        <p className="text-xs opacity-40 mt-1 text-center">Alta resolución recomendada (PNG/JPG)</p>
+                      </>
+                    )}
+                  </label>
+                  {pdfLogo && (
+                    <button onClick={() => setPdfLogo(null)} className="text-xs text-rose-500 font-bold hover:underline">
+                      Remover logotipo
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-bold flex items-center gap-2"><FileCode size={18} className="text-violet-500" /> Fuente de Datos (XML)</h3>
+                  <div 
+                    {...getRootProps()} 
+                    className="w-full aspect-[21/9] rounded-[1.5rem] border-2 border-dashed border-[var(--border)] bg-[var(--bg)] flex flex-col items-center justify-center p-4 cursor-pointer hover:border-violet-500/50 transition-colors"
+                  >
+                    <input {...getInputProps()} />
+                    <FileCode size={24} className="text-violet-500 mb-2" />
+                    <p className="font-bold text-sm text-center">Arrastra tus XMLs aquí</p>
+                    <p className="text-xs opacity-40 mt-1 text-center">{files.length > 0 ? `${files.length} comprobantes listos` : 'Múltiples archivos soportados'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {files.length > 0 && (
+                <button 
+                  onClick={generatePDFs} 
+                  disabled={processing}
+                  className="w-full py-5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-[1.5rem] font-bold shadow-xl shadow-violet-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {processing ? <RefreshCw size={20} className="animate-spin" /> : <Printer size={20} />}
+                  {processing ? "Renderizando Documentos Premium..." : `Generar ${files.length} Documentos Corporativos`}
+                </button>
+              )}
+            </div>
           ) : activeTab === 'guide' ? (
             <div className="lg:col-span-3 space-y-8">
               <div className="p-8 lg:p-12 rounded-[2.5rem] bg-gradient-to-br from-brand to-brand/80 text-white shadow-xl relative overflow-hidden">
@@ -947,6 +1215,15 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                       <div>
                         <h4 className="font-bold mb-1">Estatus Legal SAT (Real-Time)</h4>
                         <p className="text-xs opacity-60 leading-relaxed">Módulo de conexión directa con los servidores del SAT para validar estatus, códigos de respuesta y capacidad de cancelación masiva.</p>
+                      </div>
+                    </li>
+                    <li className="flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-violet-500/10 text-violet-500 flex items-center justify-center shrink-0">
+                        <Printer size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold mb-1">Representación Impresa PREMIUM</h4>
+                        <p className="text-xs opacity-60 leading-relaxed">Transforma lotes de XMLs en facturas PDF corporativas de diseño altamente profesional e incluye tu propio logotipo.</p>
                       </div>
                     </li>
                   </ul>
