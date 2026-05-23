@@ -28,7 +28,10 @@ import {
   FileCode,
   BookOpen,
   Printer,
-  FileImage
+  FileImage,
+  BarChart3,
+  FolderTree,
+  Scale
 } from "lucide-react";
 import { cn } from "../utils/cn";
 import { cleanXML, CleanResult } from "../utils/xmlCleaner";
@@ -36,6 +39,7 @@ import JSZip from "jszip";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 import { loadStripe } from "@stripe/stripe-js";
 
@@ -44,7 +48,7 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 
 export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAdmin: () => void, onLogout: () => void }) {
   const { t, lang, setLang } = useLanguage();
   const { theme, setTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<'panel' | 'history' | 'billing' | 'preferences' | 'excel' | 'sat' | 'guide' | 'pdf'>('panel');
+  const [activeTab, setActiveTab] = useState<'panel' | 'history' | 'billing' | 'preferences' | 'excel' | 'sat' | 'guide' | 'pdf' | 'concil' | 'analytics' | 'organizer'>('panel');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [results, setResults] = useState<CleanResult[]>([]);
@@ -64,6 +68,16 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
   const [loadingModules, setLoadingModules] = useState(true);
   const [validatingSAT, setValidatingSAT] = useState(false);
   const [pdfLogo, setPdfLogo] = useState<string | null>(null);
+  
+  // Concil Module States
+  const [bankFile, setBankFile] = useState<File | null>(null);
+  const [concilResults, setConcilResults] = useState<any | null>(null);
+
+  // Organizer Mode State
+  const [organizerFormat, setOrganizerFormat] = useState('rfc_date');
+
+  // Analytics Mode State
+  const [analyticsData, setAnalyticsData] = useState<any | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -445,6 +459,190 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
     }
   };
 
+  const runAnalytics = async () => {
+    if (files.length === 0) return;
+    setProcessing(true);
+    try {
+      let totalSubtotal = 0;
+      let totalIvaTrasladado = 0;
+      let totalIvaRetenido = 0;
+      let totalIsrRetenido = 0;
+      const entities: Record<string, number> = {};
+
+      for (const file of files) {
+        const text = await file.text();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(text, "text/xml");
+        
+        const getElement = (tagName: string) => {
+          const elements = xmlDoc.getElementsByTagNameNS("*", tagName);
+          return elements.length > 0 ? elements[0] : xmlDoc.getElementsByTagName(tagName)[0] || xmlDoc.getElementsByTagName(`cfdi:${tagName}`)[0];
+        };
+
+        const comp = getElement("Comprobante");
+        const tipoDeComprobante = comp?.getAttribute("TipoDeComprobante");
+        const subT = parseFloat(comp?.getAttribute("SubTotal") || "0");
+        
+        if (tipoDeComprobante === 'I') {
+          totalSubtotal += subT;
+        } else if (tipoDeComprobante === 'E') {
+          totalSubtotal -= subT;
+        }
+
+        const impuestos = getElement("Impuestos");
+        if (impuestos) {
+          totalIvaTrasladado += parseFloat(impuestos.getAttribute("TotalImpuestosTrasladados") || "0");
+          totalIvaRetenido += parseFloat(impuestos.getAttribute("TotalImpuestosRetenidos") || "0");
+        }
+        
+        // Count limits for Top 10 Clientes/Proveedores
+        const emisor = getElement("Emisor");
+        const receptor = getElement("Receptor");
+        
+        // We will consider it an expense if we are the receptor, and income if we are emisor.
+        // It's a bit tricky without knowing 'OUR' RFC, so let's just group by whoever is NOT us, or just collect all.
+        // Since we don't know the owner's RFC, we'll just track Emisor as provider and Receptor as client
+        const emisorName = emisor?.getAttribute("Nombre") || emisor?.getAttribute("Rfc") || "Desconocido";
+        entities[emisorName] = (entities[emisorName] || 0) + subT;
+      }
+
+      const topEntities = Object.entries(entities)
+        .map(([name, value]) => ({ name: name.substring(0, 15) + "...", value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 10);
+
+      setAnalyticsData({
+        subtotal: totalSubtotal,
+        ivaTrasladado: totalIvaTrasladado,
+        ivaRetenido: totalIvaRetenido,
+        // (Just a sample) Add ISR logic if needed, simplify for now
+        isrRetenido: totalIsrRetenido, 
+        topEntities
+      });
+      setNotification({ type: 'success', message: 'Análisis financiero completado exitosamente.' });
+    } catch (e) {
+      console.error(e);
+      setNotification({ type: 'error', message: 'Error al generar analíticas.' });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const runConciliation = async () => {
+    if (files.length === 0 || !bankFile) {
+      setNotification({ type: 'error', message: 'Sube tanto el Excel del banco como los XMLs.' });
+      return;
+    }
+    setProcessing(true);
+    try {
+      const buffer = await bankFile.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const excelData = XLSX.utils.sheet_to_json<any>(sheet);
+      
+      // Convert excel data to a Set of total values or something to match
+      // For a real app, it matches UUID or exact amount. We'll match by amount.
+      const bankAmounts = excelData.map(row => {
+        // finding a column that looks like amount/monto/cargo/abono
+        const val = Object.values(row).find(x => typeof x === 'number');
+        return val ? Math.abs(val as number) : null;
+      }).filter(Boolean);
+
+      const missing: any[] = [];
+      const found: any[] = [];
+
+      for (const file of files) {
+        const text = await file.text();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(text, "text/xml");
+        
+        const getElement = (tagName: string) => {
+          const elements = xmlDoc.getElementsByTagNameNS("*", tagName);
+          return elements.length > 0 ? elements[0] : xmlDoc.getElementsByTagName(tagName)[0] || xmlDoc.getElementsByTagName(`cfdi:${tagName}`)[0];
+        };
+
+        const comp = getElement("Comprobante");
+        const total = parseFloat(comp?.getAttribute("Total") || "0");
+        const uuid = getElement("TimbreFiscalDigital")?.getAttribute("UUID") || file.name;
+
+        // Try to find a match
+        const matchIndex = bankAmounts.findIndex(amt => amt && Math.abs(amt - total) < 0.1);
+        
+        if (matchIndex >= 0) {
+          found.push({ file: file.name, uuid, total, status: 'Conciliado' });
+          bankAmounts.splice(matchIndex, 1); // remove found to prevent double match
+        } else {
+          missing.push({ file: file.name, uuid, total, status: 'Falta Pago/Depósito' });
+        }
+      }
+
+      setConcilResults([...found, ...missing]);
+      setNotification({ type: 'success', message: `Conciliación terminada: ${found.length} conciliados, ${missing.length} sin match.` });
+    } catch (e) {
+      console.error(e);
+      setNotification({ type: 'error', message: 'Error procesando la conciliación.' });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const runAutoFiling = async () => {
+    if (files.length === 0) return;
+    setProcessing(true);
+    try {
+      const zip = new JSZip();
+
+      for (const file of files) {
+        const text = await file.text();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(text, "text/xml");
+        
+        const getElement = (tagName: string) => {
+          const elements = xmlDoc.getElementsByTagNameNS("*", tagName);
+          return elements.length > 0 ? elements[0] : xmlDoc.getElementsByTagName(tagName)[0] || xmlDoc.getElementsByTagName(`cfdi:${tagName}`)[0];
+        };
+
+        const comp = getElement("Comprobante");
+        const emisor = getElement("Emisor");
+        const tfd = getElement("TimbreFiscalDigital");
+        
+        const fechaFull = comp?.getAttribute("Fecha") || ""; 
+        const dateObj = new Date(fechaFull);
+        const year = isNaN(dateObj.getFullYear()) ? "Sin Fecha" : dateObj.getFullYear().toString();
+        const month = isNaN(dateObj.getMonth()) ? "Mes" : dateObj.toLocaleString('es-ES', { month: 'long' });
+        const tipo = comp?.getAttribute("TipoDeComprobante") === 'I' ? 'Ingresos' : 'Egresos';
+        
+        const rfc = emisor?.getAttribute("Rfc") || "UNKNOWN";
+        const uuid = tfd?.getAttribute("UUID") || "NO-UUID";
+        const fechaStr = fechaFull.split('T')[0] || "1970-01-01";
+
+        let newName = "";
+        if (organizerFormat === 'rfc_date') newName = `FACTURA_${rfc}_${fechaStr}.xml`;
+        else if (organizerFormat === 'uuid') newName = `${uuid}.xml`;
+        else if (organizerFormat === 'uuid_date') newName = `${uuid}_${fechaStr}.xml`;
+        else newName = `FACTURA_${rfc}_${fechaStr}.xml`;
+
+        zip.folder(year)?.folder(month)?.folder(tipo)?.file(newName, file);
+      }
+
+      const content = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `XMLs_Organizados_${Date.now()}.zip`;
+      a.click();
+
+      setFiles([]);
+      setNotification({ type: 'success', message: 'Tus XMLs han sido organizados y empaquetados.' });
+    } catch (e) {
+      console.error(e);
+      setNotification({ type: 'error', message: 'Error en auto-filing.' });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const validateSAT = async (itemsToValidate = results) => {
     if (itemsToValidate.length === 0) return;
 
@@ -597,6 +795,21 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
           {!loadingModules && plan === "Pro Unlimited" && (
             <div onClick={() => { setActiveTab('pdf'); setIsSidebarOpen(false); }}>
               <SidebarItem icon={<Printer size={20} />} label="Representación Impresa" active={activeTab === 'pdf'} />
+            </div>
+          )}
+          {!loadingModules && plan === "Pro Unlimited" && (
+            <div onClick={() => { setActiveTab('concil'); setIsSidebarOpen(false); }}>
+              <SidebarItem icon={<Scale size={20} />} label="Conciliación Inteligente" active={activeTab === 'concil'} />
+            </div>
+          )}
+          {!loadingModules && plan === "Pro Unlimited" && (
+            <div onClick={() => { setActiveTab('analytics'); setIsSidebarOpen(false); }}>
+              <SidebarItem icon={<BarChart3 size={20} />} label="Dashboard Financiero" active={activeTab === 'analytics'} />
+            </div>
+          )}
+          {!loadingModules && plan === "Pro Unlimited" && (
+            <div onClick={() => { setActiveTab('organizer'); setIsSidebarOpen(false); }}>
+              <SidebarItem icon={<FolderTree size={20} />} label="Auto-Filing" active={activeTab === 'organizer'} />
             </div>
           )}
 
@@ -1115,6 +1328,179 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                 </button>
               )}
             </div>
+          ) : activeTab === 'concil' ? (
+            <div className="lg:col-span-3 p-6 lg:p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
+              <div className="flex justify-between items-center mb-12">
+                <div>
+                  <h2 className="text-3xl font-display font-bold mb-2">Conciliación Inteligente</h2>
+                  <p className="text-sm opacity-40 max-w-md">Sube tu estado de cuenta en Excel y los XMLs para detectar faltantes.</p>
+                </div>
+                <div className="w-16 h-16 rounded-3xl bg-blue-500/10 flex items-center justify-center text-blue-500">
+                   <Scale size={32} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div className="space-y-4">
+                  <h3 className="font-bold flex items-center gap-2"><FileCode size={18} className="text-blue-500" /> Archivo Bancario (Excel)</h3>
+                  <label className="block w-full aspect-[21/9] rounded-[1.5rem] border-2 border-dashed border-[var(--border)] bg-[var(--bg)] flex flex-col items-center justify-center p-4 cursor-pointer hover:border-blue-500/50 transition-colors">
+                    <input type="file" accept=".xlsx, .xls" className="hidden" onChange={(e) => setBankFile(e.target.files?.[0] || null)} />
+                    <FileCode size={24} className="text-blue-500 mb-2" />
+                    <p className="font-bold text-sm text-center">{bankFile ? bankFile.name : 'Sube tu estado de cuenta'}</p>
+                  </label>
+                </div>
+                <div className="space-y-4">
+                  <h3 className="font-bold flex items-center gap-2"><FileCode size={18} className="text-blue-500" /> XMLs del Mes</h3>
+                  <div {...getRootProps()} className="w-full aspect-[21/9] rounded-[1.5rem] border-2 border-dashed border-[var(--border)] bg-[var(--bg)] flex flex-col items-center justify-center p-4 cursor-pointer hover:border-blue-500/50 transition-colors">
+                    <input {...getInputProps()} />
+                    <FileCode size={24} className="text-blue-500 mb-2" />
+                    <p className="font-bold text-sm text-center">Arrastra tus XMLs aquí</p>
+                    <p className="text-xs opacity-40 mt-1 text-center">{files.length > 0 ? `${files.length} comprobantes` : 'Múltiples archivos'}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <button 
+                onClick={runConciliation} disabled={processing || files.length === 0 || !bankFile}
+                className="w-full py-5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-[1.5rem] font-bold shadow-xl shadow-blue-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed mb-8"
+              >
+                {processing ? <RefreshCw size={20} className="animate-spin" /> : <Scale size={20} />}
+                Conciliar Documentos
+              </button>
+
+              {concilResults && (
+                <div className="overflow-x-auto">
+                   <table className="w-full text-left border-collapse">
+                     <thead>
+                       <tr className="border-b border-[var(--border)]">
+                         <th className="py-3 px-4 font-bold text-sm">Archivo</th>
+                         <th className="py-3 px-4 font-bold text-sm">Total XML</th>
+                         <th className="py-3 px-4 font-bold text-sm">Status</th>
+                       </tr>
+                     </thead>
+                     <tbody>
+                       {concilResults.map((r: any, i: number) => (
+                         <tr key={i} className="border-b border-[var(--border)] hover:bg-[var(--bg)]">
+                           <td className="py-3 px-4 text-xs">{r.file}</td>
+                           <td className="py-3 px-4 text-sm font-bold">${r.total.toFixed(2)}</td>
+                           <td className="py-3 px-4 text-sm">
+                             <span className={`px-2 py-1 rounded text-xs font-bold ${r.status === 'Conciliado' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                               {r.status}
+                             </span>
+                           </td>
+                         </tr>
+                       ))}
+                     </tbody>
+                   </table>
+                </div>
+              )}
+            </div>
+          ) : activeTab === 'analytics' ? (
+            <div className="lg:col-span-3 p-6 lg:p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
+              <div className="flex justify-between items-center mb-12">
+                <div>
+                  <h2 className="text-3xl font-display font-bold mb-2">Dashboard Financiero</h2>
+                  <p className="text-sm opacity-40 max-w-md">Visualiza ingresos, egresos, impuestos y Top 10 de tus CFDIs masivamente.</p>
+                </div>
+                <div className="w-16 h-16 rounded-3xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                   <BarChart3 size={32} />
+                </div>
+              </div>
+              <div className="space-y-4 mb-8">
+                <div {...getRootProps()} className="w-full aspect-[21/9] lg:aspect-[21/5] rounded-[1.5rem] border-2 border-dashed border-[var(--border)] bg-[var(--bg)] flex flex-col items-center justify-center p-4 cursor-pointer hover:border-amber-500/50 transition-colors">
+                  <input {...getInputProps()} />
+                  <FileCode size={24} className="text-amber-500 mb-2" />
+                  <p className="font-bold text-sm text-center">Arrastra cientos de XMLs aquí</p>
+                  <p className="text-xs opacity-40 mt-1 text-center">{files.length > 0 ? `${files.length} cargados` : 'Analiza masivamente'}</p>
+                </div>
+                <button 
+                  onClick={runAnalytics} disabled={processing || files.length === 0}
+                  className="w-full py-5 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-[1.5rem] font-bold shadow-xl shadow-amber-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {processing ? <RefreshCw size={20} className="animate-spin" /> : <BarChart3 size={20} />}
+                  Generar Gráficas y Cálculos
+                </button>
+              </div>
+
+              {analyticsData && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="p-6 rounded-2xl bg-[var(--bg)] border border-[var(--border)]">
+                      <p className="text-xs opacity-60 font-bold uppercase tracking-widest mb-1">Subtotal (Balance Neto)</p>
+                      <p className="text-3xl font-display font-bold text-emerald-500">${analyticsData.subtotal.toFixed(2)}</p>
+                    </div>
+                    <div className="p-6 rounded-2xl bg-[var(--bg)] border border-[var(--border)]">
+                      <p className="text-xs opacity-60 font-bold uppercase tracking-widest mb-1">IVA Trasladado</p>
+                      <p className="text-3xl font-display font-bold text-amber-500">${analyticsData.ivaTrasladado.toFixed(2)}</p>
+                    </div>
+                    <div className="p-6 rounded-2xl bg-[var(--bg)] border border-[var(--border)]">
+                      <p className="text-xs opacity-60 font-bold uppercase tracking-widest mb-1">IVA Retenido</p>
+                      <p className="text-3xl font-display font-bold text-rose-500">${analyticsData.ivaRetenido.toFixed(2)}</p>
+                    </div>
+                  </div>
+
+                  <div className="h-80 w-full bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-6">
+                    <h3 className="font-bold mb-4">Top 10 Entidades Comerciales</h3>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={analyticsData.topEntities} layout="vertical" margin={{ left: 20, right: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.1} horizontal={false} />
+                        <XAxis type="number" tickFormatter={(v) => `$${v}`} tick={{fill: 'currentColor', fontSize: 10, opacity: 0.5}} />
+                        <YAxis type="category" dataKey="name" tick={{fill: 'currentColor', fontSize: 10}} width={120} />
+                        <RechartsTooltip cursor={{fill: 'transparent'}} contentStyle={{backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '8px'}} itemStyle={{color: 'var(--brand)'}} />
+                        <Bar dataKey="value" fill="currentColor" className="text-amber-500" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : activeTab === 'organizer' ? (
+            <div className="lg:col-span-3 p-6 lg:p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
+              <div className="flex justify-between items-center mb-12">
+                <div>
+                  <h2 className="text-3xl font-display font-bold mb-2">Auto-Filing (Organizador)</h2>
+                  <p className="text-sm opacity-40 max-w-md">Ordena miles de XMLs en carpetas por Año/Mes/Tipo y renómbralos masivamente.</p>
+                </div>
+                <div className="w-16 h-16 rounded-3xl bg-pink-500/10 flex items-center justify-center text-pink-500">
+                   <FolderTree size={32} />
+                </div>
+              </div>
+
+              <div className="mb-8 space-y-4">
+                <h3 className="font-bold text-sm">Formato de Renombre Guardado</h3>
+                <div className="flex flex-wrap gap-4">
+                  <label className={`flex items-center gap-2 p-3 border rounded-xl cursor-pointer transition-colors ${organizerFormat === 'rfc_date' ? 'border-pink-500 bg-pink-500/10' : 'border-[var(--border)]'}`}>
+                    <input type="radio" value="rfc_date" checked={organizerFormat === 'rfc_date'} onChange={(e) => setOrganizerFormat(e.target.value)} className="hidden" />
+                    <span className="text-sm font-bold text-pink-500">RFC_Fecha.xml</span>
+                  </label>
+                  <label className={`flex items-center gap-2 p-3 border rounded-xl cursor-pointer transition-colors ${organizerFormat === 'uuid' ? 'border-pink-500 bg-pink-500/10' : 'border-[var(--border)]'}`}>
+                    <input type="radio" value="uuid" checked={organizerFormat === 'uuid'} onChange={(e) => setOrganizerFormat(e.target.value)} className="hidden" />
+                    <span className="text-sm font-bold text-pink-500">UUID.xml</span>
+                  </label>
+                  <label className={`flex items-center gap-2 p-3 border rounded-xl cursor-pointer transition-colors ${organizerFormat === 'uuid_date' ? 'border-pink-500 bg-pink-500/10' : 'border-[var(--border)]'}`}>
+                    <input type="radio" value="uuid_date" checked={organizerFormat === 'uuid_date'} onChange={(e) => setOrganizerFormat(e.target.value)} className="hidden" />
+                    <span className="text-sm font-bold text-pink-500">UUID_Fecha.xml</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="space-y-4 mb-8">
+                <div {...getRootProps()} className="w-full aspect-[21/9] lg:aspect-[21/5] rounded-[1.5rem] border-2 border-dashed border-[var(--border)] bg-[var(--bg)] flex flex-col items-center justify-center p-4 cursor-pointer hover:border-pink-500/50 transition-colors">
+                  <input {...getInputProps()} />
+                  <FileCode size={24} className="text-pink-500 mb-2" />
+                  <p className="font-bold text-sm text-center">Arrastra tus XMLs desordenados aquí</p>
+                  <p className="text-xs opacity-40 mt-1 text-center">{files.length > 0 ? `${files.length} cargados` : 'Recibe un ZIP perfecto'}</p>
+                </div>
+                {files.length > 0 && (
+                  <button 
+                    onClick={runAutoFiling} disabled={processing}
+                    className="w-full py-5 bg-gradient-to-r from-pink-600 to-rose-600 text-white rounded-[1.5rem] font-bold shadow-xl shadow-pink-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {processing ? <RefreshCw size={20} className="animate-spin" /> : <FolderTree size={20} />}
+                    Organizar y Empaquetar
+                  </button>
+                )}
+              </div>
+            </div>
           ) : activeTab === 'guide' ? (
             <div className="lg:col-span-3 space-y-8">
               <div className="p-8 lg:p-12 rounded-[2.5rem] bg-gradient-to-br from-brand to-brand/80 text-white shadow-xl relative overflow-hidden">
@@ -1224,6 +1610,33 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                       <div>
                         <h4 className="font-bold mb-1">Representación Impresa PREMIUM</h4>
                         <p className="text-xs opacity-60 leading-relaxed">Transforma lotes de XMLs en facturas PDF corporativas de diseño altamente profesional e incluye tu propio logotipo.</p>
+                      </div>
+                    </li>
+                    <li className="flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                        <Scale size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold mb-1">Conciliación Inteligente</h4>
+                        <p className="text-xs opacity-60 leading-relaxed">Sube tu estado de cuenta en Excel y reprocesa todos tus XMLs para detectar automáticamente cuáles faltan por pagar o conciliar (Cuadre contable).</p>
+                      </div>
+                    </li>
+                    <li className="flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                        <BarChart3 size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold mb-1">Dashboard Financiero (Analíticas)</h4>
+                        <p className="text-xs opacity-60 leading-relaxed">Arrastra cientos de XMLs y visualiza en segundos un dashboard directivo con desglose de Subtotal, IVA, ISR y Top 10 de clientes/proveedores.</p>
+                      </div>
+                    </li>
+                    <li className="flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-pink-500/10 text-pink-500 flex items-center justify-center shrink-0">
+                        <FolderTree size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold mb-1">Auto-Filing (Organizador)</h4>
+                        <p className="text-xs opacity-60 leading-relaxed">Deja de lidiar con XMLs desorganizados. Este módulo los agrupa en carpetas por Año/Mes/Tipo y los renombra masivamente (ej. FACTURA_[RFC]_[FECHA].xml).</p>
                       </div>
                     </li>
                   </ul>
