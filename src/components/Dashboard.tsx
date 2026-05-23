@@ -25,7 +25,8 @@ import {
   Search,
   X,
   RefreshCw,
-  FileCode
+  FileCode,
+  BookOpen
 } from "lucide-react";
 import { cn } from "../utils/cn";
 import { cleanXML, CleanResult } from "../utils/xmlCleaner";
@@ -39,7 +40,7 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 
 export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAdmin: () => void, onLogout: () => void }) {
   const { t, lang, setLang } = useLanguage();
   const { theme, setTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<'panel' | 'history' | 'billing' | 'preferences' | 'excel' | 'sat'>('panel');
+  const [activeTab, setActiveTab] = useState<'panel' | 'history' | 'billing' | 'preferences' | 'excel' | 'sat' | 'guide'>('panel');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [results, setResults] = useState<CleanResult[]>([]);
@@ -386,6 +387,9 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
           </div>
           <div onClick={() => { setActiveTab('history'); setIsSidebarOpen(false); }}>
             <SidebarItem icon={<History size={20} />} label={t('history')} active={activeTab === 'history'} />
+          </div>
+          <div onClick={() => { setActiveTab('guide'); setIsSidebarOpen(false); }}>
+            <SidebarItem icon={<BookOpen size={20} />} label="¿Para qué sirve?" active={activeTab === 'guide'} />
           </div>
           <div onClick={() => { setActiveTab('billing'); setIsSidebarOpen(false); }}>
             <SidebarItem icon={<CreditCard size={20} />} label={t('billing')} active={activeTab === 'billing'} />
@@ -840,6 +844,112 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                       <p className="text-sm">Sube tus archivos para iniciar la validación legal</p>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          ) : activeTab === 'guide' ? (
+            <div className="lg:col-span-3 space-y-8">
+              <div className="p-8 lg:p-12 rounded-[2.5rem] bg-gradient-to-br from-brand to-brand/80 text-white shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
+                <div className="relative z-10 w-full max-w-3xl">
+                  <h2 className="text-4xl lg:text-5xl font-display font-bold mb-4 tracking-tight">¿Para qué sirve XMLs PRO?</h2>
+                  <p className="text-lg opacity-90 leading-relaxed mb-8">
+                    XMLs PRO es mucho más que un limpiador de archivos. Es una suite completa de auditoría, reparación e inteligencia para comprobantes fiscales digitales (CFDI), diseñada para equipos contables y administrativos de alto nivel.
+                  </p>
+                  <div className="flex gap-4">
+                    <button onClick={() => setActiveTab('billing')} className="px-6 py-3 bg-white text-brand font-bold rounded-2xl hover:scale-[1.02] transition-transform">
+                      Ver Planes
+                    </button>
+                    {plan === 'Free Starter' && (
+                      <button onClick={() => handleUpgrade()} className="px-6 py-3 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 transition-colors">
+                        Mejorar a Pro
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Plan Starter */}
+                <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-8 opacity-5">
+                    <CheckCircle2 size={120} />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-2">Free Starter</h3>
+                  <p className="text-sm opacity-60 mb-8">Ideal para validaciones ocasionales y uso básico.</p>
+                  
+                  <ul className="space-y-6">
+                    <li className="flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                        <Zap size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold mb-1">Auditoría y Limpieza (Core)</h4>
+                        <p className="text-xs opacity-60 leading-relaxed">Repara la estructura, valida cálculos de impuestos y corrige nodos de tus XML. Limitado a 5 archivos por lote.</p>
+                      </div>
+                    </li>
+                    <li className="flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                        <Download size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold mb-1">Descarga Ordenada en ZIP</h4>
+                        <p className="text-xs opacity-60 leading-relaxed">Tus XML verificados se comprimen automáticamente en un paquete limpio y listo para ser almacenado.</p>
+                      </div>
+                    </li>
+                    <li className="flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                        <History size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold mb-1">Historial Básico</h4>
+                        <p className="text-xs opacity-60 leading-relaxed">Registro de los comprobantes que has procesado y validado en la plataforma a lo largo del tiempo.</p>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Plan Pro Unlimited */}
+                <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border-2 border-brand shadow-lg relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-8 opacity-5 text-brand">
+                    <Zap size={120} />
+                  </div>
+                  <div className="absolute top-4 right-4 bg-brand text-white text-[10px] uppercase font-bold tracking-widest px-3 py-1 rounded-full">
+                    Recomendado
+                  </div>
+                  
+                  <h3 className="text-2xl font-bold mb-2 text-brand">Pro Unlimited</h3>
+                  <p className="text-sm opacity-60 mb-8">El poder absoluto para administrar cientos de CFDI sin límites.</p>
+                  
+                  <ul className="space-y-6">
+                    <li className="flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
+                        <HardDrive size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold mb-1">Cargas Ilimitadas</h4>
+                        <p className="text-xs opacity-60 leading-relaxed">Sube grandes volúmenes de comprobantes (1000+) sin restricciones de lote. La capacidad del core aumenta.</p>
+                      </div>
+                    </li>
+                    <li className="flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                        <FileCode size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold mb-1">Extracción Masiva a Excel</h4>
+                        <p className="text-xs opacity-60 leading-relaxed">Módulo independiente para transformar carpetas enteras de XMLs en reportes financieros (RFC, Nombres, Conceptos, Desglose de impuestos).</p>
+                      </div>
+                    </li>
+                    <li className="flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                        <Globe size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold mb-1">Estatus Legal SAT (Real-Time)</h4>
+                        <p className="text-xs opacity-60 leading-relaxed">Módulo de conexión directa con los servidores del SAT para validar estatus, códigos de respuesta y capacidad de cancelación masiva.</p>
+                      </div>
+                    </li>
+                  </ul>
                 </div>
               </div>
             </div>
