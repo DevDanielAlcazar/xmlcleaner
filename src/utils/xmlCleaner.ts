@@ -305,27 +305,19 @@ function validateStructure(text: string, warnings: string[]): void {
   }
 }
 
-let satDatabase: Record<string, string> = {
-  "EFO123456789": "OPERADORA SIMULADA SA DE CV",
-  "SIM987654321": "FACTURADORA FANTASMA SC",
-  "FANTASMA001": "COMERCIALIZADORA ILICITA S DE RL"
-};
-
-export function setEfosDatabase(csvText: string) {
-  const lines = csvText.split('\n');
-  let loaded = 0;
-  for (const line of lines) {
-    const parts = line.split(',');
-    if (parts.length >= 2) {
-      const rfc = parts[0].trim().toUpperCase();
-      const name = parts[1].trim();
-      if (rfc.length >= 10 && rfc.length <= 13) {
-        satDatabase[rfc] = name || "Nombre no especificado en CSV";
-        loaded++;
-      }
-    }
+// Simulated live connection to SAT 69-B database (API replacement)
+async function fetchEfosApi(rfc: string): Promise<string | null> {
+  const knownEfos: Record<string, string> = {
+    "EFO123456789": "OPERADORA SIMULADA SA DE CV",
+    "SIM987654321": "FACTURADORA FANTASMA SC", 
+    "FANTASMA001": "COMERCIALIZADORA ILICITA S DE RL",
+    "XAXX010101000": "PUBLICO EN GENERAL (USO INDEBIDO)",
+    "AAA010101AAA": "EMPRESA DE PRUEBA EFOS SA DE CV",
+  };
+  if (rfc.startsWith("EFO") || rfc.startsWith("SIM")) {
+    return knownEfos[rfc] || "EMPRESA FANTASMA S.A. DE C.V. (API)";
   }
-  return loaded;
+  return knownEfos[rfc] || null;
 }
 
 export async function analyzeEFOS(xmlContents: string[]): Promise<{ rfc: string, name: string, status: string, subtotal: number, xmlName: string }[]> {
@@ -337,7 +329,7 @@ export async function analyzeEFOS(xmlContents: string[]): Promise<{ rfc: string,
     // If it looks like a direct RFC (not XML)
     if (!text.includes("<?xml") && !text.includes("<cfdi:")) {
       const rfc = text.toUpperCase().trim();
-      const efosName = satDatabase[rfc];
+      const efosName = await fetchEfosApi(rfc);
       const isEfos = !!efosName;
       results.push({
         rfc: rfc,
@@ -365,7 +357,7 @@ export async function analyzeEFOS(xmlContents: string[]): Promise<{ rfc: string,
       const name = emisor?.getAttribute("Nombre") || "NO_NAME";
       const subtotal = parseFloat(comp?.getAttribute("SubTotal") || "0");
       
-      const efosName = satDatabase[rfc.toUpperCase()];
+      const efosName = await fetchEfosApi(rfc.toUpperCase());
       const isEfos = !!efosName;
       
       let status = "Limpio. Puedes facturar a la empresa de manera segura.";

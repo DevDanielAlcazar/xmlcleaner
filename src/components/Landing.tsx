@@ -347,65 +347,7 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
             <p className="opacity-50 max-w-2xl mx-auto">Tecnología de punta para el manejo de tus comprobantes fiscales.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
-              <div className="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mb-6">
-                <ShieldCheck size={24} />
-              </div>
-              <h3 className="text-xl font-bold mb-4">Auditoría Estructural</h3>
-              <p className="text-sm opacity-60 leading-relaxed">
-                Validamos cada nodo y cálculo de impuestos para asegurar que el XML sea fiscalmente rastreable y perfecto.
-              </p>
-            </div>
             
-            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
-              <div className="w-12 h-12 bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center mb-6">
-                <ShieldAlert size={24} />
-              </div>
-              <h3 className="text-xl font-bold mb-4">Escaner EFOS</h3>
-              <p className="text-sm opacity-60 leading-relaxed">
-                Protege tus deducciones y evita sorpresas filtrando XMLs contra las listas negras (69-B) del SAT automáticamente.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
-              <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mb-6">
-                <Search size={24} />
-              </div>
-              <h3 className="text-xl font-bold mb-4">Lógica Fiscal Av.</h3>
-              <p className="text-sm opacity-60 leading-relaxed">
-                Detección automática de inconsistencias entre Régimen, Moneda, y Método de Pago PPD vs PUE.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
-              <div className="w-12 h-12 bg-indigo-500/10 text-indigo-500 rounded-2xl flex items-center justify-center mb-6">
-                <Calculator size={24} />
-              </div>
-              <h3 className="text-xl font-bold mb-4">Facturación IA</h3>
-              <p className="text-sm opacity-60 leading-relaxed">
-                Un asistente experto en generar facturas sin complicaciones. El motor deduce los impuestos y retenciones.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
-              <div className="w-12 h-12 bg-purple-500/10 text-purple-500 rounded-2xl flex items-center justify-center mb-6">
-                <Scale size={24} />
-              </div>
-              <h3 className="text-xl font-bold mb-4">Auditoría PPD vs REP</h3>
-              <p className="text-sm opacity-60 leading-relaxed">
-                Cruza todos tus CFDI de pago PPD con tus REP y detecta huecos, saldos pendientes y evita multas del SAT.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
-              <div className="w-12 h-12 bg-cyan-500/10 text-cyan-500 rounded-2xl flex items-center justify-center mb-6">
-                <DownloadCloud size={24} />
-              </div>
-              <h3 className="text-xl font-bold mb-4">Extracción Masiva</h3>
-              <p className="text-sm opacity-60 leading-relaxed">
-                Descarga hasta 200,000 archivos XML diarios, conectando tu FIEL. Respalda tus CFDI sin captchas ni retrasos.
-              </p>
-            </div>
             
             <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
               <div className="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mb-6">

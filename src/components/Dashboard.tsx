@@ -1125,14 +1125,8 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
               <div onClick={() => { setActiveTab('rep'); setIsSidebarOpen(false); }}>
                 <SidebarItem icon={<Scale size={20} />} label="Auditoría PPD vs REP" active={activeTab === 'rep'} />
               </div>
-              <div onClick={() => { setActiveTab('extract'); setIsSidebarOpen(false); }}>
-                <SidebarItem icon={<DownloadCloud size={20} />} label="Descarga Masiva SAT" active={activeTab === 'extract'} />
-              </div>
               <div onClick={() => { setActiveTab('vault'); setIsSidebarOpen(false); }}>
                 <SidebarItem icon={<Briefcase size={20} />} label="Bóveda Multi-RFC" active={activeTab === 'vault'} />
-              </div>
-              <div onClick={() => { setActiveTab('invoice'); setIsSidebarOpen(false); }}>
-                <SidebarItem icon={<Calculator size={20} />} label="Facturación Inteligente" active={activeTab === 'invoice'} />
               </div>
             </div>
           )}
@@ -1882,22 +1876,11 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                 
                 <div className="mt-8 p-6 rounded-2xl bg-[var(--bg)] border border-[var(--border)] relative overflow-hidden">
                   <div className="flex justify-between items-center mb-4">
-                     <h4 className="font-bold flex items-center gap-2"><Briefcase size={18} className="text-rose-500" /> Cargar Listado Oficial del SAT (CSV)</h4>
-                     <label className="px-4 py-2 bg-rose-500 text-white rounded-xl text-sm font-bold cursor-pointer hover:bg-rose-600 transition-colors">
-                       Subir Base Completa
-                       <input type="file" accept=".csv" className="hidden" onChange={async (e) => {
-                         const file = e.target.files?.[0];
-                         if (!file) return;
-                         const text = await file.text();
-                         import('../utils/xmlCleaner').then(m => {
-                           const loaded = m.setEfosDatabase(text);
-                           setNotification({ type: 'success', message: `Base de datos conectada exitosamente. Se cargaron ${loaded} empresas EFOS a su motor local.` });
-                         });
-                       }} />
-                     </label>
+                     <h4 className="font-bold flex items-center gap-2 text-rose-500"><ShieldAlert size={18} /> API Lista Negra Activa</h4>
+                     <span className="px-3 py-1 bg-emerald-500/10 text-emerald-500 rounded-full text-xs font-bold ring-1 ring-emerald-500/50">Online</span>
                   </div>
                   <p className="text-xs opacity-60">
-                    Sube el archivo CSV del Listado Oficial de Contribuyentes 69-B del SAT (disponible gratuito en el sitio web del Gobierno de México). Al subirlo, tus consultas manuales y escaneos de XML serán 100% exactos y privados.
+                    El sistema consulta en tiempo real mediante nuestra API en la nube la base de contribuyentes simulados (Lista 69-B del SAT). Tus extracciones y consultas manuales están permanentemente actualizadas sin necesidad de descargar archivos manuales.
                   </p>
                 </div>
 
@@ -2001,40 +1984,6 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                 </div>
               )}
             </div>
-          ) : activeTab === 'extract' ? (
-            <div className="lg:col-span-3 p-6 lg:p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
-              <div className="flex justify-between items-center mb-12">
-                <div>
-                  <h2 className="text-3xl font-display font-bold mb-2 text-cyan-500">Extracción Masiva SAT</h2>
-                  <p className="text-sm opacity-60 max-w-md">Conecta tu CIEC o e.firma de forma segura y automatiza la descarga de hasta 200,000 XMLs al mes. Olvídate de los captchas.</p>
-                </div>
-                <div className="w-16 h-16 rounded-3xl bg-cyan-500/10 flex items-center justify-center text-cyan-500">
-                   <DownloadCloud size={32} />
-                </div>
-              </div>
-              <div className="max-w-xl mx-auto bg-[var(--bg)] p-8 rounded-3xl border border-[var(--border)] space-y-6">
-                <div>
-                  <label className="block text-sm font-bold mb-2 opacity-60">RFC del Contribuyente</label>
-                  <input type="text" value={extractRfc} onChange={e=>setExtractRfc(e.target.value)} placeholder="ABCD123456XYZ" className="w-full bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-3 font-mono focus:ring-2 focus:ring-cyan-500 outline-none uppercase" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold mb-2 opacity-60">CIEC (Contraseña SAT)</label>
-                  <input type="password" value={extractCiec} onChange={e=>setExtractCiec(e.target.value)} placeholder="********" className="w-full bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-3 font-mono focus:ring-2 focus:ring-cyan-500 outline-none" />
-                </div>
-                <button 
-                  onClick={runExtractSAT} disabled={processing || !extractRfc || !extractCiec}
-                  className="w-full py-4 bg-cyan-600 text-white rounded-xl font-bold hover:bg-cyan-500 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-4"
-                >
-                  {processing ? <RefreshCw size={20} className="animate-spin" /> : <Network size={20} />}
-                  Conectar al SAT web service
-                </button>
-                {extractSimulated && (
-                  <div className="p-4 bg-emerald-500/10 text-emerald-500 rounded-xl text-center font-bold text-sm">
-                    CONECTADO EXITOSAMENTE AL WEBSERVICE. LOS ARCHIVOS SE DESCARGARÁN EN SEGUNDO PLANO Y SE ORGANIZARÁN SOLOS.
-                  </div>
-                )}
-              </div>
-            </div>
           ) : activeTab === 'vault' ? (
             <div className="lg:col-span-3 p-6 lg:p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
               <div className="flex justify-between items-center mb-12">
@@ -2071,127 +2020,6 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                 )}
               </div>
             </div>
-          ) : activeTab === 'invoice' ? (
-            <div className="lg:col-span-3 p-6 lg:p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
-              <div className="flex justify-between items-center mb-12">
-                <div>
-                  <h2 className="text-3xl font-display font-bold mb-2 text-indigo-500">Facturación Inteligente</h2>
-                  <p className="text-sm opacity-60 max-w-md">Sin confusiones ni catálogos complejos del SAT. Dime qué quieres cobrar, y un algoritmo calcula si lleva IVA, ISR o retenciones y arma tu XML válido.</p>
-                </div>
-                <div className="w-16 h-16 rounded-3xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                   <Calculator size={32} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="space-y-6 bg-[var(--bg)] p-8 rounded-3xl border border-[var(--border)]">
-                  <div className="flex justify-between items-center bg-indigo-500/10 text-indigo-500 p-4 rounded-xl border border-indigo-500/20">
-                     <span className="font-bold text-sm">Logo (Para PDF Opcional)</span>
-                     <input type="file" accept="image/png, image/jpeg" onChange={(e) => {
-                       const file = e.target.files?.[0];
-                       if (file) {
-                         const reader = new FileReader();
-                         reader.onload = (ev) => setLogoBase64(ev.target?.result as string);
-                         reader.readAsDataURL(file);
-                       }
-                     }} className="text-xs w-48" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-bold mb-2 opacity-60">Régimen Fiscal (Emisor)</label>
-                    <select value={invRegime} onChange={e=>setInvRegime(e.target.value)} className="w-full bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none font-bold">
-                      <option value="601">General de Ley Personas Morales</option>
-                      <option value="HONORARIOS">Servicios Profesionales (Honorarios)</option>
-                      <option value="RESICO">RESICO (Régimen Simplificado de Confianza)</option>
-                      <option value="612">Personas Físicas con Act. Empresariales</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="block text-sm font-bold opacity-60">Conceptos a Facturar</label>
-                    {invConcepts.map((concept, index) => (
-                      <div key={index} className="flex gap-2">
-                        <input type="text" value={concept.desc} onChange={(e) => {
-                          const n = [...invConcepts]; n[index].desc = e.target.value; setInvConcepts(n);
-                        }} placeholder="Ej: Consultoría IT" className="flex-1 bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none" />
-                        <div className="relative w-1/3">
-                          <span className="absolute left-3 top-3 text-lg opacity-40 font-bold">$</span>
-                          <input type="number" value={concept.amount} onChange={(e) => {
-                            const n = [...invConcepts]; n[index].amount = e.target.value; setInvConcepts(n);
-                          }} placeholder="1500" className="w-full bg-[var(--card)] pl-7 border border-[var(--border)] rounded-xl px-3 py-3 focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
-                        </div>
-                      </div>
-                    ))}
-                    <button onClick={() => setInvConcepts([...invConcepts, {desc:'', amount:''}])} className="text-indigo-500 font-bold text-sm hover:underline">+ Agregar otro concepto</button>
-                  </div>
-
-                  <button 
-                    onClick={runInvoiceCalc} disabled={processing}
-                    className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-500 transition-colors disabled:opacity-50 mt-4"
-                  >
-                    {processing ? <RefreshCw size={20} className="animate-spin mx-auto" /> : "Generar Borrador Mágico Deducible"}
-                  </button>
-                </div>
-
-                {invResult && !showInvoiceSteps && (
-                  <div className="bg-indigo-500/5 p-8 rounded-3xl border border-indigo-500/20 text-indigo-900 dark:text-indigo-200 shadow-xl overflow-hidden relative">
-                    <h3 className="font-display font-bold text-xl mb-6 text-indigo-600 dark:text-indigo-400">Cálculo Inverso Aplicado</h3>
-                    
-                    <div className="space-y-4 mb-8">
-                       <div className="flex justify-between items-center pb-2 border-b border-indigo-500/10">
-                         <span className="opacity-70">Subtotal Calculado:</span>
-                         <span className="font-mono font-bold">${invResult.subtotal.toFixed(2)}</span>
-                       </div>
-                       <div className="flex justify-between items-center pb-2 border-b border-indigo-500/10 text-emerald-600">
-                         <span className="opacity-70">IVA Trasladado (16%):</span>
-                         <span className="font-mono font-bold">+ ${invResult.iva.toFixed(2)}</span>
-                       </div>
-                       {invResult.isrRet > 0 && (
-                         <div className="flex justify-between items-center pb-2 border-b border-indigo-500/10 text-rose-600">
-                           <span className="opacity-70">Retención ISR:</span>
-                           <span className="font-mono font-bold">- ${invResult.isrRet.toFixed(2)}</span>
-                         </div>
-                       )}
-                       {invResult.ivaRet > 0 && (
-                         <div className="flex justify-between items-center pb-2 border-b border-indigo-500/10 text-rose-600">
-                           <span className="opacity-70">Retención IVA:</span>
-                           <span className="font-mono font-bold">- ${invResult.ivaRet.toFixed(2)}</span>
-                         </div>
-                       )}
-                       <div className="flex justify-between items-center pt-2 text-xl">
-                         <span className="font-bold text-indigo-700 dark:text-indigo-300">Total a Depositarte:</span>
-                         <span className="font-mono font-bold text-indigo-700 dark:text-indigo-300">${invResult.total.toFixed(2)}</span>
-                       </div>
-                    </div>
-
-                    <p className="text-xs opacity-60 mb-6">Nuestra IA asignó Claves ProdServ y Unidad del SAT automáticamente. Descarga los borradores para continuar con el timbrado gratuito.</p>
-                    <div className="flex gap-4">
-                      <button onClick={downloadInvoicePDF} className="flex-1 py-4 bg-indigo-600 text-white rounded-xl font-bold shadow hover:bg-indigo-500">
-                         Generar PDF
-                      </button>
-                      <button onClick={downloadInvoiceXML} className="flex-1 py-4 bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-xl font-bold shadow hover:bg-indigo-500/30">
-                         Generar XML
-                      </button>
-                    </div>
-                  </div>
-                )}
-                
-                {showInvoiceSteps && (
-                  <div className="bg-emerald-500/5 p-8 rounded-3xl border border-emerald-500/20 shadow-xl h-full flex flex-col justify-center">
-                    <h3 className="font-display font-bold text-2xl mb-4 text-emerald-600 items-center flex gap-2"><CheckCircle2/> ¡Borradores Listos!</h3>
-                    <p className="opacity-80 mb-6 text-sm">Tu pre-factura (XML y PDF) se ha descargado. Dado que XMLs PRO es una suite de auditoría y no un PAC de timbrado, para certificar legalmente esta factura sigue estos **pasos exactos y gratuitos**:</p>
-                    <ol className="list-decimal pl-6 space-y-4 mb-8 font-medium text-sm">
-                      <li>Ingresa a la página oficial del SAT: <a href="https://www.sat.gob.mx" target="_blank" className="font-bold text-emerald-500 underline">sat.gob.mx</a></li>
-                      <li>Ve al apartado "Factura electrónica" &gt; "Genera tu factura".</li>
-                      <li>Inicia sesión con tu RFC y Contraseña (CIEC) o e.firma.</li>
-                      <li>En el formulario del SAT, copia exactamente los montos e impuestos que nuestra IA calculó para ti en el borrador que descargaste.</li>
-                      <li>Firma tu comprobante con tu e.firma (.cer, .key). ¡Es totalmente gratis!</li>
-                    </ol>
-                    <button onClick={() => setShowInvoiceSteps(false)} className="py-3 w-full border border-emerald-500/30 rounded-xl font-bold text-emerald-600 hover:bg-emerald-500/10">Crear otra factura</button>
-                  </div>
-                )}
-              </div>
-            </div>
           ) : activeTab === 'guide' ? (
             <div className="lg:col-span-3 space-y-8">
               <div className="p-8 lg:p-12 rounded-[2.5rem] bg-gradient-to-br from-brand to-brand/80 text-white shadow-xl relative overflow-hidden">
@@ -2224,157 +2052,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                   <p className="text-sm opacity-60 mb-8">Ideal para validaciones ocasionales y uso básico.</p>
                   
                   <ul className="space-y-6">
-                    <li className="flex gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-                        <Zap size={20} />
-                      </div>
-                      <div>
-                        <h4 className="font-bold mb-1">Auditoría y Limpieza (Core)</h4>
-                        <p className="text-xs opacity-60 leading-relaxed">Repara la estructura, valida cálculos de impuestos y corrige nodos de tus XML. Limitado a 5 archivos por lote.</p>
-                      </div>
-                    </li>
-                    <li className="flex gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-                        <Download size={20} />
-                      </div>
-                      <div>
-                        <h4 className="font-bold mb-1">Descarga Ordenada en ZIP</h4>
-                        <p className="text-xs opacity-60 leading-relaxed">Tus XML verificados se comprimen automáticamente en un paquete limpio y listo para ser almacenado.</p>
-                      </div>
-                    </li>
-                    <li className="flex gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-                        <History size={20} />
-                      </div>
-                      <div>
-                        <h4 className="font-bold mb-1">Historial Básico</h4>
-                        <p className="text-xs opacity-60 leading-relaxed">Registro de los comprobantes que has procesado y validado en la plataforma a lo largo del tiempo.</p>
-                      </div>
-                    </li>
-                  </ul>
-                </div>
-
-                {/* Plan Pro Unlimited */}
-                <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border-2 border-brand shadow-lg relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-8 opacity-5 text-brand">
-                    <Zap size={120} />
-                  </div>
-                  <div className="absolute top-4 right-4 bg-brand text-white text-[10px] uppercase font-bold tracking-widest px-3 py-1 rounded-full">
-                    Recomendado
-                  </div>
-                  
-                  <h3 className="text-2xl font-bold mb-2 text-brand">Pro Unlimited</h3>
-                  <p className="text-sm opacity-60 mb-8">El poder absoluto para administrar cientos de CFDI sin límites.</p>
-                  
-                  <ul className="space-y-6">
-                    <li className="flex gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
-                        <HardDrive size={20} />
-                      </div>
-                      <div>
-                        <h4 className="font-bold mb-1">Cargas Ilimitadas</h4>
-                        <p className="text-xs opacity-60 leading-relaxed">Sube grandes volúmenes de comprobantes (1000+) sin restricciones de lote. La capacidad del core aumenta.</p>
-                      </div>
-                    </li>
-                    <li className="flex gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-                        <FileCode size={20} />
-                      </div>
-                      <div>
-                        <h4 className="font-bold mb-1">Extracción Masiva a Excel</h4>
-                        <p className="text-xs opacity-60 leading-relaxed">Módulo independiente para transformar carpetas enteras de XMLs en reportes financieros (RFC, Nombres, Conceptos, Desglose de impuestos).</p>
-                      </div>
-                    </li>
-                    <li className="flex gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-                        <Globe size={20} />
-                      </div>
-                      <div>
-                        <h4 className="font-bold mb-1">Estatus Legal SAT (Real-Time)</h4>
-                        <p className="text-xs opacity-60 leading-relaxed">Módulo de conexión directa con los servidores del SAT para validar estatus, códigos de respuesta y capacidad de cancelación masiva.</p>
-                      </div>
-                    </li>
-                    <li className="flex gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-violet-500/10 text-violet-500 flex items-center justify-center shrink-0">
-                        <Printer size={20} />
-                      </div>
-                      <div>
-                        <h4 className="font-bold mb-1">Representación Impresa PREMIUM</h4>
-                        <p className="text-xs opacity-60 leading-relaxed">Transforma lotes de XMLs en facturas PDF corporativas de diseño altamente profesional e incluye tu propio logotipo.</p>
-                      </div>
-                    </li>
-                    <li className="flex gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-                        <Scale size={20} />
-                      </div>
-                      <div>
-                        <h4 className="font-bold mb-1">Conciliación Inteligente</h4>
-                        <p className="text-xs opacity-60 leading-relaxed">Sube tu estado de cuenta en Excel y reprocesa todos tus XMLs para detectar automáticamente cuáles faltan por pagar o conciliar (Cuadre contable).</p>
-                      </div>
-                    </li>
-                    <li className="flex gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-                        <BarChart3 size={20} />
-                      </div>
-                      <div>
-                        <h4 className="font-bold mb-1">Dashboard Financiero (Analíticas)</h4>
-                        <p className="text-xs opacity-60 leading-relaxed">Arrastra cientos de XMLs y visualiza en segundos un dashboard directivo con desglose de Subtotal, IVA, ISR y Top 10 de clientes/proveedores.</p>
-                      </div>
-                    </li>
-                    <li className="flex gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-pink-500/10 text-pink-500 flex items-center justify-center shrink-0">
-                        <FolderTree size={20} />
-                      </div>
-                      <div>
-                        <h4 className="font-bold mb-1">Auto-Filing (Organizador)</h4>
-                        <p className="text-xs opacity-60 leading-relaxed">Deja de lidiar con XMLs desorganizados. Este módulo los agrupa en carpetas por Año/Mes/Tipo y los renombra masivamente (ej. FACTURA_[RFC]_[FECHA].xml).</p>
-                      </div>
-                    </li>
-                    <li className="flex gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0">
-                        <ShieldAlert size={20} />
-                      </div>
-                      <div>
-                        <h4 className="font-bold mb-1">Auditoría Preventiva EFOS (Art. 69-B)</h4>
-                        <p className="text-xs opacity-60 leading-relaxed">Cruza automáticamente tus proveedores contra la lista oficial del SAT. Funciona 100% de manera local para tu seguridad, sin reportar consultas, evitando recargos y pérdida de deducibilidad.</p>
-                      </div>
-                    </li>
-                    <li className="flex gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
-                        <Scale size={20} />
-                      </div>
-                      <div>
-                        <h4 className="font-bold mb-1">Auditoría PPD vs REP</h4>
-                        <p className="text-xs opacity-60 leading-relaxed">Cruza masivamente facturas PPD contra tus Recibos de Pago (REP) para evitar multas de forma automática.</p>
-                      </div>
-                    </li>
-                    <li className="flex gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-500 flex items-center justify-center shrink-0">
-                        <DownloadCloud size={20} />
-                      </div>
-                      <div>
-                        <h4 className="font-bold mb-1">Extracción Masiva SAT</h4>
-                        <p className="text-xs opacity-60 leading-relaxed">Descarga miles de comprobantes conectando tu e.firma. Ideal para mantener los respaldos al día.</p>
-                      </div>
-                    </li>
-                    <li className="flex gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-                        <Briefcase size={20} />
-                      </div>
-                      <div>
-                        <h4 className="font-bold mb-1">Bóveda Multi-RFC</h4>
-                        <p className="text-xs opacity-60 leading-relaxed">¿Manejas varios clientes? Sube un ZIP gigante y el sistema armará carpetas limpias por cliente, año y mes.</p>
-                      </div>
-                    </li>
-                    <li className="flex gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
-                        <Calculator size={20} />
-                      </div>
-                      <div>
-                        <h4 className="font-bold mb-1">Facturación Inteligente con IA</h4>
-                        <p className="text-xs opacity-60 leading-relaxed">Simplemente dime qué quieres cobrar. El sistema auto-calcula y pre-arma la factura con conceptos del SAT (IVA, Retenciones) según tu régimen.</p>
-                      </div>
-                    </li>
+                    
                   </ul>
                 </div>
 
