@@ -2027,15 +2027,15 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                 <div className="relative z-10 w-full max-w-3xl">
                   <h2 className="text-4xl lg:text-5xl font-display font-bold mb-4 tracking-tight">¿Para qué sirve XMLs PRO?</h2>
                   <p className="text-lg opacity-90 leading-relaxed mb-8">
-                    XMLs PRO es mucho más que un limpiador de archivos. Es una suite completa de auditoría, reparación e inteligencia para comprobantes fiscales digitales (CFDI), diseñada para equipos contables y administrativos de alto nivel.
+                    XMLs PRO es una suite integral de auditoría, reparación de metadatos calificada y automatización de procesos fiscales mediante inteligencia artificial. Está diseñada especialmente para simplificar las tareas complejas de despachos, contadores y departamentos de administración de empresas mexicanas.
                   </p>
                   <div className="flex gap-4">
                     <button onClick={() => setActiveTab('billing')} className="px-6 py-3 bg-white text-brand font-bold rounded-2xl hover:scale-[1.02] transition-transform">
-                      Ver Planes
+                      Ver Planes y Precios
                     </button>
                     {plan === 'Free Starter' && (
                       <button onClick={() => handleUpgrade("price_1T5vEpE2HOY0nwdFIlpwJm2s")} className="px-6 py-3 bg-white/20 text-white font-bold rounded-2xl border border-white/40 hover:bg-white/30 transition-colors shadow-lg shadow-white/20">
-                        Mejorar a Pro Anual (Más Popular)
+                        Mejorar a Pro Unlimited Anual
                       </button>
                     )}
                   </div>
@@ -2044,18 +2044,148 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Plan Starter */}
-                <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-8 opacity-5">
-                    <CheckCircle2 size={120} />
-                  </div>
-                  <h3 className="text-2xl font-bold mb-2">Free Starter</h3>
-                  <p className="text-sm opacity-60 mb-8">Ideal para validaciones ocasionales y uso básico.</p>
-                  
-                  <ul className="space-y-6">
+                <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] relative overflow-hidden flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-start mb-6">
+                      <div>
+                        <span className="text-xs font-bold uppercase tracking-widest opacity-50 bg-[var(--bg)] px-3 py-1 rounded-full">Acceso Básico</span>
+                        <h3 className="text-2xl font-bold mt-3">Free Starter</h3>
+                      </div>
+                      <div className="text-3xl font-display font-bold">$0 <span className="text-xs font-sans font-normal opacity-50">MXN</span></div>
+                    </div>
+                    <p className="text-sm opacity-60 mb-8">Herramientas esenciales para profesionales independientes, pymes y validaciones ocasionales sin costo alguno.</p>
                     
-                  </ul>
+                    <h4 className="font-bold text-xs uppercase tracking-widest opacity-50 mb-4">Funcionalidades Incluidas:</h4>
+                    <ul className="space-y-4 text-sm">
+                      <li className="flex gap-3">
+                        <CheckCircle2 size={18} className="text-emerald-500 shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block font-semibold">Visor XML Detallado:</strong>
+                          <span className="opacity-70 text-xs">Carga y examina la estructura, conceptos, tasas e impuestos trasladados/retenidos de tus archivos fiscales de forma local.</span>
+                        </div>
+                      </li>
+                      <li className="flex gap-3">
+                        <CheckCircle2 size={18} className="text-emerald-500 shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block font-semibold">Reparador de Metadatos:</strong>
+                          <span className="opacity-70 text-xs">Corrige y limpia automáticamente caracteres ilegibles, codificación UTF-8 rota y emojis no admitidos por el SAT de forma privada.</span>
+                        </div>
+                      </li>
+                      <li className="flex gap-3">
+                        <CheckCircle2 size={18} className="text-emerald-500 shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block font-semibold">Límite Mensual Recurrente:</strong>
+                          <span className="opacity-70 text-xs">Obtén 5 créditos de procesamiento gratis mes con mes para gestionar tus cargas de prueba.</span>
+                        </div>
+                      </li>
+                      <li className="flex gap-3">
+                        <CheckCircle2 size={18} className="text-emerald-500 shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block font-semibold">Búsqueda e Historial:</strong>
+                          <span className="opacity-70 text-xs">Filtra y consulta tus actividades de procesamiento y descargas previas de forma segura.</span>
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                  {plan === 'Free Starter' && (
+                    <div className="mt-8 pt-6 border-t border-[var(--border)]">
+                      <span className="text-xs font-bold text-amber-500 flex items-center gap-1">★ Estás usando el Plan Free Starter</span>
+                    </div>
+                  )}
                 </div>
 
+                {/* Plan Pro Unlimited */}
+                <div className="p-8 rounded-[2.5rem] bg-brand/5 border-2 border-brand relative overflow-hidden flex flex-col justify-between shadow-lg shadow-brand/5">
+                  <div className="absolute top-0 right-0 p-8 opacity-5 text-brand">
+                    <Zap size={150} />
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-start mb-6">
+                      <div>
+                        <span className="text-xs font-bold uppercase tracking-widest text-brand bg-brand/15 px-3 py-1 rounded-full">Suite Completa</span>
+                        <h3 className="text-2xl font-bold mt-3 text-brand">Pro Unlimited</h3>
+                      </div>
+                      <div className="text-3xl font-display font-bold text-brand">$29 <span className="text-xs font-sans font-normal opacity-70">MXN / mes</span></div>
+                    </div>
+                    <p className="text-sm opacity-80 mb-8">El arsenal definitivo para despachos contables y empresas que manejan grandes volúmenes de facturación y auditorías complejas.</p>
+                    
+                    <h4 className="font-bold text-xs uppercase tracking-widest text-brand mb-4">Módulos Exclusivos Pro Unlimited:</h4>
+                    <ul className="space-y-4 text-sm">
+                      <li className="flex gap-3">
+                        <Zap size={18} className="text-brand shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block font-semibold text-brand font-bold">Créditos Lote Ilimitados (10k al mes):</strong>
+                          <span className="opacity-70 text-xs">Procesa y repara miles de CFDI de manera instantánea y simultánea sin bloqueos de límite.</span>
+                        </div>
+                      </li>
+                      <li className="flex gap-3">
+                        <Zap size={18} className="text-brand shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block font-semibold">Módulo Extraer a Excel:</strong>
+                          <span className="opacity-70 text-xs">Convierte listas masivas de XMLs a hojas de Excel perfectamente ordenadas por campos contables en segundos.</span>
+                        </div>
+                      </li>
+                      <li className="flex gap-3">
+                        <Zap size={18} className="text-brand shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block font-semibold">Módulo Validador Oficial del SAT:</strong>
+                          <span className="opacity-70 text-xs">Consulta automática del estatus vigente / cancelado directo con la base del SAT.</span>
+                        </div>
+                      </li>
+                      <li className="flex gap-3">
+                        <Zap size={18} className="text-brand shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block font-semibold">Escáner de Listas Negras EFOS (69-B):</strong>
+                          <span className="opacity-70 text-xs">API automática integrada para verificar que tus emisores no sean consideradas empresas fantasma por el SAT de forma 100% privada.</span>
+                        </div>
+                      </li>
+                      <li className="flex gap-3">
+                        <Zap size={18} className="text-brand shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block font-semibold">Auditoría PPD vs REP:</strong>
+                          <span className="opacity-70 text-xs">Cruza inteligentemente facturas PPD con sus respectivos Recibos de Pago (REP) para evitar rechazos del SAT.</span>
+                        </div>
+                      </li>
+                      <li className="flex gap-3">
+                        <Zap size={18} className="text-brand shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block font-semibold">Bóveda Multi-RFC Inteligente:</strong>
+                          <span className="opacity-70 text-xs">Asigna, separa e indexa automáticamente paquetes desordenados de XMLs en carpetas por cliente o RFC.</span>
+                        </div>
+                      </li>
+                      <li className="flex gap-3">
+                        <Zap size={18} className="text-brand shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block font-semibold">Conciliación Bancaria Inteligente:</strong>
+                          <span className="opacity-70 text-xs">Cruza tus transacciones en estados de cuenta bancarios con tus CFDIs vigentes y halla discrepancias al momento.</span>
+                        </div>
+                      </li>
+                      <li className="flex gap-3">
+                        <Zap size={18} className="text-brand shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block font-semibold">Dashboard Financiero Premium:</strong>
+                          <span className="opacity-70 text-xs">Hermosas analíticas interactivas de ventas, egresos, TOP de clientes e impuestos (IVA, ISR) analizados visualmente.</span>
+                        </div>
+                      </li>
+                      <li className="flex gap-3">
+                        <Zap size={18} className="text-brand shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block font-semibold">Representación Impresa en Lote:</strong>
+                          <span className="opacity-70 text-xs">Genera PDFs profesionales y altamente personalizables a partir de tus archivos XML de forma masiva.</span>
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                  {plan === 'Pro Unlimited' ? (
+                    <div className="mt-8 pt-6 border-t border-brand/25 text-brand flex items-center gap-1.5 font-bold text-sm">
+                      <CheckCircle2 size={18} /> Plan Pro Activo: ¡Disfruta de todos tus módulos ilimitados!
+                    </div>
+                  ) : (
+                    <button onClick={() => setActiveTab('billing')} className="mt-8 w-full py-4 bg-brand hover:bg-brand-dark text-white rounded-2xl font-bold hover:scale-[1.01] transition-all text-center">
+                      Activar Todo con Pro Unlimited
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ) : activeTab === 'history' ? (

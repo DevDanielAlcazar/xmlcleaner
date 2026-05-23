@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "../hooks/useLanguage";
 import { useTheme } from "../hooks/useTheme";
-import { Sun, Moon, Sunset, Globe, CheckCircle2, ShieldCheck, Key, Mail, User, Lock, AlertCircle, Zap, FileCode, Search, ShieldAlert, Scale, FolderTree, BarChart3, Calculator, DownloadCloud, Briefcase } from "lucide-react";
+import { Sun, Moon, Sunset, Globe, CheckCircle2, ShieldCheck, Key, Mail, User, Lock, AlertCircle, Zap, FileCode, Search, ShieldAlert, Scale, FolderTree, BarChart3, Calculator, DownloadCloud, Briefcase, Printer, FileText } from "lucide-react";
 import { cn } from "../utils/cn";
 import React, { useState } from "react";
 
@@ -343,29 +343,98 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
           id="features"
         >
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-display font-bold mb-4">Características Principales</h2>
-            <p className="opacity-50 max-w-2xl mx-auto">Tecnología de punta para el manejo de tus comprobantes fiscales.</p>
+            <h2 className="text-4xl font-display font-bold mb-4">Características de XMLs PRO</h2>
+            <p className="opacity-50 max-w-2xl mx-auto">Una suite potente de auditoría local, automatización contable y seguridad tributaria.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            
-            
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
+              <div className="w-12 h-12 bg-brand/10 text-brand rounded-2xl flex items-center justify-center mb-6">
+                <Zap size={24} />
+              </div>
+              <h3 className="text-xl font-bold mb-3">Auditoría & Reparación</h3>
+              <p className="text-sm opacity-60 leading-relaxed">
+                Repara la codificación UTF-8 rota, elimina caracteres no válidos y emojis, comprueba cálculos internos de impuestos y valida sellos de CFDI en lote antes de tus declaraciones.
+              </p>
+            </div>
+
             <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
               <div className="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mb-6">
-                <Briefcase size={24} />
+                <FileCode size={24} />
               </div>
-              <h3 className="text-xl font-bold mb-4">Bóveda Multi-RFC</h3>
+              <h3 className="text-xl font-bold mb-3">Extraer a Excel</h3>
               <p className="text-sm opacity-60 leading-relaxed">
-                Para despachos que manejan múltiples entidades. El sistema separa facturas revueltas y las asigna a cada cliente.
+                Transforma carpetas enteras de archivos XML a hojas de cálculo de Excel ordenadas por columnas personalizables. Exporta conceptos, RFCs e impuestos con un solo click.
               </p>
             </div>
 
             <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
               <div className="w-12 h-12 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center mb-6">
+                <Globe size={24} />
+              </div>
+              <h3 className="text-xl font-bold mb-3">Validador Oficial SAT</h3>
+              <p className="text-sm opacity-60 leading-relaxed">
+                Verifica de manera masiva el estatus actual de vigencia u opción de cancelación directamente conectando con los servidores tributarios del SAT sin captchas.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
+              <div className="w-12 h-12 bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center mb-6">
+                <ShieldAlert size={24} />
+              </div>
+              <h3 className="text-xl font-bold mb-3">Escáner de EFOS (69-B)</h3>
+              <p className="text-sm opacity-60 leading-relaxed">
+                Previene riesgos de deducibilidad cruzando emisores con el Listado de Empresas que Facturan Operaciones Simuladas en tiempo real a través de nuestra API en la nube.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
+              <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mb-6">
+                <Scale size={24} />
+              </div>
+              <h3 className="text-xl font-bold mb-3">Auditoría PPD vs REP</h3>
+              <p className="text-sm opacity-60 leading-relaxed">
+                Empareja automáticamente tus CFDIs de Pago en Parcialidades con sus respectivos Recibos de Pago (REP) para constatar la consistencia fiscal requerida ante auditorías.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
+              <div className="w-12 h-12 bg-cyan-500/10 text-cyan-500 rounded-2xl flex items-center justify-center mb-6">
+                <Briefcase size={24} />
+              </div>
+              <h3 className="text-xl font-bold mb-3">Bóveda Multi-RFC</h3>
+              <p className="text-sm opacity-60 leading-relaxed">
+                Sube directorios mixtos con facturas de distintas entidades. El software las analiza, asocia e indexa en subcarpetas clasificadas por cliente o RFC automáticamente.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
+              <div className="w-12 h-12 bg-teal-500/10 text-teal-500 rounded-2xl flex items-center justify-center mb-6">
+                <CheckCircle2 size={24} />
+              </div>
+              <h3 className="text-xl font-bold mb-3">Conciliación Bancaria</h3>
+              <p className="text-sm opacity-60 leading-relaxed">
+                Sube tus estados de cuenta de banco y asócialos a tus facturas cobradas o pagadas para identificar descuadres, montos faltantes e inconsistencias fiscales.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
+              <div className="w-12 h-12 bg-indigo-500/10 text-indigo-500 rounded-2xl flex items-center justify-center mb-6">
                 <BarChart3 size={24} />
               </div>
-              <h3 className="text-xl font-bold mb-4">Dashboard Directivo</h3>
+              <h3 className="text-xl font-bold mb-3">Dashboard Financiero</h3>
               <p className="text-sm opacity-60 leading-relaxed">
-                Convierte cientos de comprobantes en gráficas instantáneas, resúmenes netos de impuestos (ISR, IVA) y Top Clientes.
+                Obtén analíticas elegantes sobre ingresos, egresos, impuestos trasladados o retenidos (IVA, ISR), y la lista de tus principales clientes y proveedores.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
+              <div className="w-12 h-12 bg-purple-500/10 text-purple-500 rounded-2xl flex items-center justify-center mb-6">
+                <Printer size={24} />
+              </div>
+              <h3 className="text-xl font-bold mb-3">Representación Impresa</h3>
+              <p className="text-sm opacity-60 leading-relaxed">
+                Transforma al instante listados de XMLs en PDFs altamente estilizados, listos para enviar a tus clientes, personalizables con logotipo en un lote organizado.
               </p>
             </div>
           </div>
@@ -383,9 +452,9 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             {[
-              { step: "01", title: "Carga Inteligente", desc: "Sube tus archivos XML o ZIP. Nuestro sistema identifica automáticamente la versión y estructura de cada comprobante." },
-              { step: "02", title: "Auditoría y Reparación", desc: "Ejecutamos más de 20 reglas de validación, corregimos errores de cálculo y eliminamos basura digital." },
-              { step: "03", title: "Entrega Certificada", desc: "Descarga tus archivos optimizados o genera reportes financieros en Excel listos para tu contabilidad." }
+              { step: "01", title: "Carga Inteligente", desc: "Sube tus archivos XML o ZIP. Nuestro sistema identifica automáticamente la versión y estructura de cada comprobante de manera segura." },
+              { step: "02", title: "Auditoría en Lote", desc: "Ejecutamos más de 20 validaciones contables, verificamos estatus SAT, evaluamos listas negras EFOS y resolvemos codificaciones rotas." },
+              { step: "03", title: "Resultado Limpio", desc: "Descarga la base optimizada, genera representaciones impresas a PDF o exporta reportes financieros estructurados en Excel." }
             ].map((s, i) => (
               <div key={i} className="relative group">
                 <div className="text-8xl font-display font-bold opacity-5 absolute -top-12 -left-4 group-hover:text-brand transition-colors">{s.step}</div>
@@ -400,47 +469,60 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
         <section id="pricing" className="mt-48">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-display font-bold mb-4">Planes y Precios</h2>
-            <p className="opacity-50 max-w-2xl mx-auto">Elige el plan que mejor se adapte a tus necesidades.</p>
+            <p className="opacity-50 max-w-2xl mx-auto">Elige el plan que mejor se adapte a tu volumen operativo.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Free */}
-            <div className="p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] flex flex-col">
-              <h3 className="text-xl font-bold mb-2">Free Starter</h3>
-              <div className="text-4xl font-display font-bold mb-6">$0 <span className="text-sm opacity-40 font-sans">MXN</span></div>
-              <ul className="space-y-4 mb-10 flex-1">
-                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> 5 créditos incluidos</li>
-                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> 5 XMLs gratis</li>
-                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Reparación básica</li>
-              </ul>
-              <button onClick={() => setAuthMode('register')} className="w-full py-4 rounded-2xl border border-[var(--border)] font-bold hover:bg-[var(--bg)] transition-colors">Empezar ahora</button>
+            <div className="p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] flex flex-col justify-between">
+              <div>
+                <h3 className="text-xl font-bold mb-2">Free Starter</h3>
+                <div className="text-4xl font-display font-bold mb-6">$0 <span className="text-sm opacity-40 font-sans">MXN</span></div>
+                <ul className="space-y-4 mb-10 flex-grow text-sm">
+                  <li className="flex gap-3 font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" /> 5 créditos de procesamiento al mes</li>
+                  <li className="flex gap-3 font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" /> Visor XML e Historial completo</li>
+                  <li className="flex gap-3 font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" /> Reparador de Metadatos y codificación</li>
+                  <li className="flex gap-3 font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" /> Búsqueda y Filtros Básicos</li>
+                  <li className="flex gap-3 font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" /> Soporte por correo estándar</li>
+                </ul>
+              </div>
+              <button onClick={() => setAuthMode('register')} className="w-full py-4 rounded-2xl border border-[var(--border)] font-bold hover:bg-[var(--bg)] transition-colors mt-6">Empezar ahora</button>
             </div>
 
             {/* Monthly */}
-            <div className="p-10 rounded-[2.5rem] bg-[var(--card)] border-2 border-brand flex flex-col relative">
+            <div className="p-10 rounded-[2.5rem] bg-[var(--card)] border-2 border-brand flex flex-col relative justify-between shadow-lg shadow-brand/5">
               <div className="absolute top-6 right-6 bg-brand text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">Popular</div>
-              <h3 className="text-xl font-bold mb-2">Pro Mensual</h3>
-              <div className="text-4xl font-display font-bold mb-6">$29 <span className="text-sm opacity-40 font-sans">MXN / mes</span></div>
-              <ul className="space-y-4 mb-10 flex-1">
-                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Créditos Ilimitados (10k)</li>
-                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Reparación Total</li>
-                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Módulo Extraer Excel</li>
-                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Módulo Validador SAT</li>
-                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Soporte Prioritario</li>
-              </ul>
-              <button onClick={() => setAuthMode('register')} className="w-full py-4 rounded-2xl bg-brand text-white font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] transition-transform">Suscribirse</button>
+              <div>
+                <h3 className="text-xl font-bold mb-2">Pro Mensual</h3>
+                <div className="text-4xl font-display font-bold mb-6">$29 <span className="text-sm opacity-40 font-sans">MXN / mes</span></div>
+                <ul className="space-y-4 mb-10 flex-grow text-sm">
+                  <li className="flex gap-3 font-medium opacity-80"><Zap size={16} className="text-brand shrink-0 mt-0.5" /> Lote Ilimitado (10,000 créditos al mes)</li>
+                  <li className="flex gap-3 font-medium opacity-80"><Zap size={16} className="text-brand shrink-0 mt-0.5" /> Módulo de Extracción a Excel</li>
+                  <li className="flex gap-3 font-medium opacity-80"><Zap size={16} className="text-brand shrink-0 mt-0.5" /> Módulo Validador del SAT</li>
+                  <li className="flex gap-3 font-medium opacity-80"><Zap size={16} className="text-brand shrink-0 mt-0.5" /> Escáner en vivo de EFOS (69-B)</li>
+                  <li className="flex gap-3 font-medium opacity-80"><Zap size={16} className="text-brand shrink-0 mt-0.5" /> Auditoría automática PPD vs REP</li>
+                  <li className="flex gap-3 font-medium opacity-80"><Zap size={16} className="text-brand shrink-0 mt-0.5" /> Bóveda Inteligente Multi-RFC</li>
+                  <li className="flex gap-3 font-medium opacity-80"><Zap size={16} className="text-brand shrink-0 mt-0.5" /> Conciliación Bancaria Avanzada</li>
+                  <li className="flex gap-3 font-medium opacity-80"><Zap size={16} className="text-brand shrink-0 mt-0.5" /> Dashboard Financiero & Impuestos</li>
+                  <li className="flex gap-3 font-medium opacity-80"><Zap size={16} className="text-brand shrink-0 mt-0.5" /> Representación Impresa a PDF en lote</li>
+                  <li className="flex gap-3 font-medium opacity-80"><Zap size={16} className="text-brand shrink-0 mt-0.5" /> Soporte priorizado 24/7</li>
+                </ul>
+              </div>
+              <button onClick={() => setAuthMode('register')} className="w-full py-4 rounded-2xl bg-brand text-white font-bold shadow-lg shadow-brand/20 hover:scale-[1.02] transition-transform mt-6">Suscribirse</button>
             </div>
 
             {/* Annual */}
-            <div className="p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] flex flex-col">
-              <h3 className="text-xl font-bold mb-2">Pro Anual</h3>
-              <div className="text-4xl font-display font-bold mb-2">$290 <span className="text-sm opacity-40 font-sans">MXN / año</span></div>
-              <div className="text-xs font-bold text-emerald-500 mb-6 uppercase tracking-widest">Ahorra 2 meses</div>
-              <ul className="space-y-4 mb-10 flex-1">
-                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Todo lo del plan mensual</li>
-                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> 2 meses de regalo</li>
-                <li className="flex items-center gap-3 text-sm font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500" /> Facturación anual</li>
-              </ul>
-              <button onClick={() => setAuthMode('register')} className="w-full py-4 rounded-2xl border border-[var(--border)] font-bold hover:bg-[var(--bg)] transition-colors">Suscribirse</button>
+            <div className="p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] flex flex-col justify-between">
+              <div>
+                <h3 className="text-xl font-bold mb-2">Pro Anual</h3>
+                <div className="text-4xl font-display font-bold mb-2">$290 <span className="text-sm opacity-40 font-sans">MXN / año</span></div>
+                <div className="text-xs font-bold text-emerald-500 mb-6 uppercase tracking-widest">Ahorra 2 meses</div>
+                <ul className="space-y-4 mb-10 flex-grow text-sm">
+                  <li className="flex gap-3 font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" /> Todo lo incluido en el plan mensual</li>
+                  <li className="flex gap-3 font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" /> 2 meses de regalo por pago anual</li>
+                  <li className="flex gap-3 font-medium opacity-70"><CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" /> Facturación electrónica del servicio</li>
+                </ul>
+              </div>
+              <button onClick={() => setAuthMode('register')} className="w-full py-4 rounded-2xl border border-[var(--border)] font-bold hover:bg-[var(--bg)] transition-colors mt-6">Suscribirse</button>
             </div>
           </div>
         </section>
