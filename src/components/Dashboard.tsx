@@ -881,11 +881,102 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
   const runVaultProcess = async () => {
     if (vaultFiles.length === 0) return;
     setProcessing(true);
-    setTimeout(() => {
+    setNotification({ type: 'success', message: 'Iniciando análisis y clasificación de la Bóveda Multi-RFC...' });
+    
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      
+      const fileSummaries: string[] = ["=== RESUMEN DE ORGANIZACIÓN DE BÓVEDA MULTI-RFC ==="];
+      fileSummaries.push(`Fecha de Procesamiento: ${new Date().toLocaleString()}`);
+      fileSummaries.push(`Total de Archivos XML evaluados: ${vaultFiles.length}\n`);
+
+      for (let i = 0; i < vaultFiles.length; i++) {
+        const file = vaultFiles[i];
+        const contentText = await file.text();
+        
+        let emisorRfc = "RFC_DESCONOCIDO";
+        let receptorRfc = "RECEPTOR_DESCONOCIDO";
+        let emisorNombre = "Emisor_Desconocido";
+        let subtotal = 0;
+        let uuid = `UUID_S_N_${i}`;
+        let tipo = "Ingreso";
+        let fecha = "Sin_Fecha";
+        let mesStr = "Sin_Mes";
+        
+        try {
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(contentText, "text/xml");
+          
+          const getElement = (tagName: string) => {
+            const elements = xmlDoc.getElementsByTagNameNS("*", tagName);
+            return elements.length > 0 ? elements[0] : (xmlDoc.getElementsByTagName(tagName)[0] || xmlDoc.getElementsByTagName(`cfdi:${tagName}`)[0] || xmlDoc.getElementsByTagNameNS("http://www.sat.gob.mx/cfd/3", tagName)[0] || xmlDoc.getElementsByTagNameNS("http://www.sat.gob.mx/cfd/4", tagName)[0]);
+          };
+
+          const emisor = getElement("Emisor");
+          const receptor = getElement("Receptor");
+          const comprobante = getElement("Comprobante");
+          const timbre = getElement("TimbreFiscalDigital");
+          
+          if (emisor) {
+            emisorRfc = emisor.getAttribute("Rfc") || emisorRfc;
+            emisorNombre = emisor.getAttribute("Nombre") || emisorNombre;
+          }
+          if (receptor) {
+            receptorRfc = receptor.getAttribute("Rfc") || receptorRfc;
+          }
+          if (comprobante) {
+            subtotal = parseFloat(comprobante.getAttribute("SubTotal") || "0");
+            tipo = comprobante.getAttribute("TipoDeComprobante") || tipo;
+            fecha = comprobante.getAttribute("Fecha") || fecha;
+            if (fecha && fecha !== "Sin_Fecha") {
+              const matches = fecha.match(/^(\d{4})-(\d{2})/);
+              if (matches) {
+                const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+                const mesIdx = parseInt(matches[2]) - 1;
+                mesStr = `${matches[1]}_${meses[mesIdx] || matches[2]}`;
+              }
+            }
+          }
+          if (timbre) {
+            uuid = timbre.getAttribute("UUID") || uuid;
+          }
+        } catch (e) {
+          console.error("XML parse error", e);
+        }
+        
+        // Sanitize strings
+        emisorRfc = emisorRfc.replace(/[^a-zA-Z0-9_-]/g, "");
+        receptorRfc = receptorRfc.replace(/[^a-zA-Z0-9_-]/g, "");
+        emisorNombre = emisorNombre.replace(/[^a-zA-Z0-9_ -]/g, "").trim().substring(0, 30);
+        
+        // Folder path logic: Multi-RFC organizing
+        const folderPath = `Boveda_MultiRFC/${emisorRfc}/${mesStr}/${tipo === 'I' ? 'Ingresos_Emitidos' : 'Otros_Conceptos'}`;
+        const fileName = `${emisorRfc}_${uuid.substring(0, 8)}_${subtotal.toFixed(0)}.xml`;
+        
+        zip.file(`${folderPath}/${fileName}`, contentText);
+        fileSummaries.push(`- [ORGANIZADO] RFC Emisor: ${emisorRfc} (${emisorNombre}) | RFC Receptor: ${receptorRfc} | Tipo: ${tipo} | Monto: $${subtotal} => Ruta: ${folderPath}/${fileName}`);
+      }
+      
+      fileSummaries.push(`\nTotal de carpetas estructurales organizadas por RFC emisor y mes.`);
+      
+      zip.file(`Resumen_Boveda_MultiRFC.txt`, fileSummaries.join("\n"));
+      
+      const zipContent = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipContent);
+      const tempLink = document.createElement('a');
+      tempLink.href = url;
+      tempLink.download = `Boveda_MultiRFC_Organizada_${new Date().toISOString().substring(0, 10)}.zip`;
+      tempLink.click();
+      
       setVaultFiles([]);
+      setNotification({ type: 'success', message: '¡Bóveda Multi-RFC procesada con éxito! Descargando ZIP estructurado por RFC, Año y Mes.' });
+    } catch (err: any) {
+      console.error(err);
+      setNotification({ type: 'error', message: `Error al organizar la bóveda: ${err.message || err}` });
+    } finally {
       setProcessing(false);
-      setNotification({ type: 'success', message: 'Bóveda separada correctamente en sub-carpetas por cliente.' });
-    }, 1500);
+    }
   };
 
   const runInvoiceCalc = () => {

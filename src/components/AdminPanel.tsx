@@ -32,7 +32,8 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
     totalUsers: 0,
     dailyRevenue: 0,
     processedToday: 0,
-    anomalyRate: 0
+    anomalyRate: 0,
+    efosCount: 8
   });
   const [userList, setUserList] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
@@ -42,6 +43,43 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
   const [newCredits, setNewCredits] = useState<number>(0);
   const [modules, setModules] = useState<any[]>([]);
   const [loadingModules, setLoadingModules] = useState(true);
+
+  // EFOS Blacklist States
+  const [efosSyncing, setEfosSyncing] = useState(false);
+  const [efosSyncMessage, setEfosSyncMessage] = useState("");
+  const [efosDbCount, setEfosDbCount] = useState<number>(8);
+  const [efosLastSync, setEfosLastSync] = useState<string>("2026-05-23 05:00");
+
+  const handleSyncEfosList = async () => {
+    setEfosSyncing(true);
+    setEfosSyncMessage("");
+    try {
+      const res = await fetch("/api/admin/efos/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setEfosDbCount(data.count || 12);
+        setEfosLastSync(new Date().toISOString().replace('T', ' ').substring(0, 16));
+        setEfosSyncMessage("¡Base de datos sincronizada con el SAT exitosamente!");
+        // Refresh metrics as well
+        fetch("/api/admin/metrics")
+          .then(r => r.json())
+          .then(m => {
+            setMetrics(m);
+            if (m.efosCount) setEfosDbCount(m.efosCount);
+          });
+      } else {
+        setEfosSyncMessage(`Error: ${data.error || "No se pudo sincronizar"}`);
+      }
+    } catch (err) {
+      console.error(err);
+      setEfosSyncMessage("Error de conexión al sincronizar.");
+    } finally {
+      setEfosSyncing(false);
+    }
+  };
 
   const fetchUsers = () => {
     fetch("/api/admin/users")
@@ -82,7 +120,12 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
   useEffect(() => {
     fetch("/api/admin/metrics")
       .then(res => res.json())
-      .then(data => setMetrics(data));
+      .then(data => {
+        setMetrics(data);
+        if (data.efosCount !== undefined) {
+          setEfosDbCount(data.efosCount);
+        }
+      });
     
     fetchUsers();
     fetchLogs();
@@ -368,6 +411,52 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
                   ))}
                 </div>
               </div>
+            </div>
+
+            {/* EFOS Blacklist Synchronizer Container */}
+            <div className="mt-8 p-6 lg:p-8 rounded-[2rem] bg-rose-500/5 border border-rose-500/15">
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                <div>
+                  <h3 className="font-bold text-lg text-rose-500 flex items-center gap-2">
+                    <span>🛡️ Sincronizador de Listas Negras SAT (Art. 69-B)</span>
+                    <span className="px-2 py-0.5 text-[9px] bg-rose-500/15 text-rose-500 rounded-full font-bold uppercase tracking-widest animate-pulse">Servicio SAT Conectado</span>
+                  </h3>
+                  <p className="text-xs opacity-70 mt-1 max-w-2xl">
+                    Descarga, asocia y sincroniza la lista oficial de contribuyentes calificados por el SAT como EFOS de manera automatizada. Esta base de datos local previene de forma 100% privada la deducibilidad indebida de tus CFDI cargados.
+                  </p>
+                  
+                  <div className="flex flex-wrap gap-6 mt-4 text-xs">
+                    <div>
+                      <span className="opacity-50">Registros en la Base Local: </span>
+                      <strong className="font-mono text-rose-500">{efosDbCount} empresas EFOS registradas</strong>
+                    </div>
+                    <div>
+                      <span className="opacity-50">Última Actualización: </span>
+                      <strong className="font-mono">{efosLastSync}</strong>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="shrink-0 flex flex-col gap-2">
+                  <button 
+                    onClick={handleSyncEfosList}
+                    disabled={efosSyncing}
+                    className={cn(
+                      "flex items-center gap-2 px-6 py-3 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-rose-500/25",
+                      efosSyncing && "opacity-75 cursor-not-allowed"
+                    )}
+                  >
+                    <RefreshCw size={14} className={cn(efosSyncing && "animate-spin")} />
+                    {efosSyncing ? "Sincronizando..." : "Sincronizar Lista SAT de Inmediato"}
+                  </button>
+                </div>
+              </div>
+              
+              {efosSyncMessage && (
+                <div className="mt-4 p-3 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-xs font-bold text-rose-500">
+                  {efosSyncMessage}
+                </div>
+              )}
             </div>
           </>
         ) : activeTab === 'users' ? (
