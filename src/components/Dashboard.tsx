@@ -317,6 +317,25 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
         const pdfWidth = doc.internal.pageSize.getWidth();
         const pdfHeight = doc.internal.pageSize.getHeight();
 
+        // Extraer atributos fiscales avanzados
+        const noCertificado = comprobante?.getAttribute("NoCertificado") || "";
+        const lugarExpedicion = comprobante?.getAttribute("LugarExpedicion") || "";
+        const tipoDeComprobante = comprobante?.getAttribute("TipoDeComprobante") || "";
+        const condicionesDePago = comprobante?.getAttribute("CondicionesDePago") || "";
+        
+        let tipoCompDesc = "Documento";
+        if (tipoDeComprobante === "I") tipoCompDesc = "Ingreso";
+        if (tipoDeComprobante === "E") tipoCompDesc = "Egreso";
+        if (tipoDeComprobante === "T") tipoCompDesc = "Traslado";
+        if (tipoDeComprobante === "P") tipoCompDesc = "Pago";
+        if (tipoDeComprobante === "N") tipoCompDesc = "Nómina";
+
+        const selloCFD = timbre?.getAttribute("SelloCFD") || "";
+        const selloSAT = timbre?.getAttribute("SelloSAT") || "";
+        const noCertificadoSAT = timbre?.getAttribute("NoCertificadoSAT") || "";
+        const fechaTimbrado = timbre?.getAttribute("FechaTimbrado") || "";
+        const rfcProvCertif = timbre?.getAttribute("RfcProvCertif") || "";
+
         // Header Background
         doc.setFillColor(34, 40, 49); // Dark blue/grey
         doc.rect(0, 0, pdfWidth, 40, 'F');
@@ -327,86 +346,141 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
           doc.setTextColor(255, 255, 255);
           doc.setFontSize(24);
           doc.setFont("helvetica", "bold");
-          doc.text("EMPRESA SA DE CV", 14, 25);
+          const emisorTemp = emisor?.getAttribute("Nombre") || "EMPRESA SA DE CV";
+          doc.text(emisorTemp.substring(0, 30), 14, 25);
         }
 
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         const serieFolio = `${comprobante?.getAttribute("Serie") || ""} ${comprobante?.getAttribute("Folio") || ""}`.trim();
-        doc.text(`FACTURA ${serieFolio ? `NO. ${serieFolio}` : ''}`, pdfWidth - 14, 20, { align: 'right' });
+        doc.text(`FACTURA ${serieFolio ? `NO. ${serieFolio}` : ''}`, pdfWidth - 14, 15, { align: 'right' });
+        doc.setFontSize(8);
+        doc.text(`Tipo de Comprobante: ${tipoDeComprobante} - ${tipoCompDesc}`, pdfWidth - 14, 21, { align: 'right' });
         doc.text(`UUID: ${timbre?.getAttribute("UUID") || "N/A"}`, pdfWidth - 14, 27, { align: 'right' });
+        doc.text(`Lugar de Expedición: ${lugarExpedicion}`, pdfWidth - 14, 33, { align: 'right' });
 
         // Emisor & Receptor Sections
         doc.setTextColor(0, 0, 0);
-        doc.setFontSize(12);
+        doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
-        doc.text("EMISOR", 14, 55);
-        doc.text("RECEPTOR", pdfWidth / 2 + 10, 55);
+        doc.text("EMISOR", 14, 50);
+        doc.text("RECEPTOR", pdfWidth / 2 + 10, 50);
 
-        doc.setFontSize(10);
+        doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
-        doc.setTextColor(80, 80, 80);
+        doc.setTextColor(60, 60, 60);
         
-        doc.text(`Razón Social: ${emisor?.getAttribute("Nombre") || "No especificado"}`, 14, 62);
-        doc.text(`RFC: ${emisor?.getAttribute("Rfc") || ""}`, 14, 67);
-        doc.text(`Régimen: ${emisor?.getAttribute("RegimenFiscal") || "N/A"}`, 14, 72);
+        // Truncate names if too long to avoid overlapping
+        let emName = emisor?.getAttribute("Nombre") || "No especificado";
+        if (emName.length > 55) emName = emName.substring(0, 52) + "...";
+        doc.text(`Razón Social: ${emName}`, 14, 56);
+        doc.text(`RFC: ${emisor?.getAttribute("Rfc") || ""}`, 14, 61);
+        doc.text(`Régimen: ${emisor?.getAttribute("RegimenFiscal") || "N/A"}`, 14, 66);
 
-        doc.text(`Razón Social: ${receptor?.getAttribute("Nombre") || "No especificado"}`, pdfWidth / 2 + 10, 62);
-        doc.text(`RFC: ${receptor?.getAttribute("Rfc") || ""}`, pdfWidth / 2 + 10, 67);
-        doc.text(`Uso CFDI: ${receptor?.getAttribute("UsoCFDI") || "N/A"}`, pdfWidth / 2 + 10, 72);
+        let recName = receptor?.getAttribute("Nombre") || "No especificado";
+        if (recName.length > 55) recName = recName.substring(0, 52) + "...";
+        doc.text(`Razón Social: ${recName}`, pdfWidth / 2 + 10, 56);
+        doc.text(`RFC: ${receptor?.getAttribute("Rfc") || ""}`, pdfWidth / 2 + 10, 61);
+        doc.text(`Uso CFDI: ${receptor?.getAttribute("UsoCFDI") || "N/A"}`, pdfWidth / 2 + 10, 66);
+        doc.text(`Regimen Fiscal: ${receptor?.getAttribute("RegimenFiscalReceptor") || "N/A"}`, pdfWidth / 2 + 10, 71);
+        doc.text(`CP: ${receptor?.getAttribute("DomicilioFiscalReceptor") || "N/A"}`, pdfWidth / 2 + 10, 76);
 
         // General Info Box
         doc.setDrawColor(220, 220, 220);
         doc.setFillColor(249, 250, 251);
-        doc.roundedRect(14, 85, pdfWidth - 28, 20, 3, 3, 'FD');
+        doc.roundedRect(14, 85, pdfWidth - 28, 22, 3, 3, 'FD');
         
-        doc.setFontSize(9);
+        doc.setFontSize(8);
         doc.setFont("helvetica", "bold");
-        doc.text("Fecha", 20, 92);
-        doc.text("Moneda", 70, 92);
-        doc.text("Forma Pago", 120, 92);
-        doc.text("Método Pago", 160, 92);
+        doc.text("Fecha Emisión", 18, 92);
+        doc.text("Moneda", 65, 92);
+        doc.text("Forma Pago", 110, 92);
+        doc.text("Método Pago", 155, 92);
 
         doc.setFont("helvetica", "normal");
-        doc.text(comprobante?.getAttribute("Fecha") || "", 20, 99);
-        doc.text(comprobante?.getAttribute("Moneda") || "", 70, 99);
-        doc.text(comprobante?.getAttribute("FormaPago") || "", 120, 99);
-        doc.text(comprobante?.getAttribute("MetodoPago") || "", 160, 99);
+        doc.text(comprobante?.getAttribute("Fecha") || "", 18, 100);
+        doc.text(comprobante?.getAttribute("Moneda") || "", 65, 100);
+        doc.text(comprobante?.getAttribute("FormaPago") || "", 110, 100);
+        doc.text(comprobante?.getAttribute("MetodoPago") || "", 155, 100);
+        
+        if (condicionesDePago) {
+           doc.setFontSize(7);
+           doc.text(`Condiciones: ${condicionesDePago}`, 18, 105);
+        }
 
         // Conceptos Table
-        const tableData = conceptosList.map(c => [
-          c.getAttribute("ClaveProdServ") || "",
-          c.getAttribute("Cantidad") || "",
-          c.getAttribute("ClaveUnidad") || "",
-          c.getAttribute("Descripcion") || "",
-          `$${parseFloat(c.getAttribute("ValorUnitario") || "0").toFixed(2)}`,
-          `$${parseFloat(c.getAttribute("Importe") || "0").toFixed(2)}`
-        ]);
+        const tableData = conceptosList.map(c => {
+           let desc = c.getAttribute("Descripcion") || "";
+           // Remove extra spaces or newlines
+           desc = desc.replace(/\s+/g, ' ').trim();
+           return [
+             c.getAttribute("ClaveProdServ") || "",
+             c.getAttribute("Cantidad") || "",
+             c.getAttribute("ClaveUnidad") || "",
+             desc,
+             `$${parseFloat(c.getAttribute("ValorUnitario") || "0").toFixed(2)}`,
+             `$${parseFloat(c.getAttribute("Importe") || "0").toFixed(2)}`
+           ];
+        });
 
         autoTable(doc, {
-          startY: 115,
-          head: [['Clave', 'Cant', 'Unidad', 'Descripción', 'Unitario', 'Importe']],
+          startY: 112,
+          head: [['Clave Producto', 'Cant', 'Unidad', 'Descripción', 'Unitario', 'Importe']],
           body: tableData,
           theme: 'grid',
-          headStyles: { fillColor: [34, 40, 49], textColor: 255 },
-          styles: { fontSize: 8, cellPadding: 4, textColor: [50, 50, 50] },
+          headStyles: { fillColor: [34, 40, 49], textColor: 255, fontSize: 8 },
+          styles: { fontSize: 7, cellPadding: 4, textColor: [50, 50, 50] },
           columnStyles: {
-            0: { cellWidth: 20 },
-            1: { cellWidth: 15 },
+            0: { cellWidth: 22 },
+            1: { cellWidth: 12 },
             2: { cellWidth: 15 },
-            4: { cellWidth: 25, halign: 'right' },
-            5: { cellWidth: 25, halign: 'right' }
+            4: { cellWidth: 22, halign: 'right' },
+            5: { cellWidth: 22, halign: 'right' }
           }
         });
 
-        // Totals
-        const finalY = (doc as any).lastAutoTable.finalY + 10;
-        doc.setFontSize(10);
+        // Totals & Impuestos
+        const finalY = (doc as any).lastAutoTable.finalY + 8;
+        doc.setFontSize(9);
         
         const subtotal = parseFloat(comprobante?.getAttribute("SubTotal") || "0").toFixed(2);
         const descuento = parseFloat(comprobante?.getAttribute("Descuento") || "0").toFixed(2);
         const total = parseFloat(comprobante?.getAttribute("Total") || "0").toFixed(2);
+        
+        // Extract taxes for summary
+        let ivaTrasladado = "0.00";
+        let isrRetenido = "0.00";
+        let ivaRetenido = "0.00";
+        
+        const impuestosGlobales = getElement("Impuestos");
+        if (impuestosGlobales) {
+           const traslados = Array.from(impuestosGlobales.getElementsByTagNameNS("*", "Traslado"));
+           const retenidos = Array.from(impuestosGlobales.getElementsByTagNameNS("*", "Retencion"));
+           
+           if(traslados.length === 0) {
+              const cfdiTraslados = Array.from(impuestosGlobales.getElementsByTagName("cfdi:Traslado"));
+              traslados.push(...cfdiTraslados);
+           }
+           if(retenidos.length === 0) {
+              const cfdiRetenidos = Array.from(impuestosGlobales.getElementsByTagName("cfdi:Retencion"));
+              retenidos.push(...cfdiRetenidos);
+           }
+
+           traslados.forEach(t => {
+              if (t.getAttribute("Impuesto") === "002") { // IVA
+                 ivaTrasladado = parseFloat(t.getAttribute("Importe") || "0").toFixed(2);
+              }
+           });
+           retenidos.forEach(r => {
+              if (r.getAttribute("Impuesto") === "001") { // ISR
+                 isrRetenido = parseFloat(r.getAttribute("Importe") || "0").toFixed(2);
+              }
+              if (r.getAttribute("Impuesto") === "002") { // IVA
+                 ivaRetenido = parseFloat(r.getAttribute("Importe") || "0").toFixed(2);
+              }
+           });
+        }
 
         doc.setFont("helvetica", "normal");
         doc.text("Subtotal:", pdfWidth - 50, finalY);
@@ -414,22 +488,87 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
         
         let currentY = finalY;
         if (descuento !== "0.00") {
-          currentY += 6;
+          currentY += 5;
           doc.text("Descuento:", pdfWidth - 50, currentY);
-          doc.text(`$${descuento}`, pdfWidth - 14, currentY, { align: 'right' });
+          doc.text(`-$${descuento}`, pdfWidth - 14, currentY, { align: 'right' });
+        }
+        
+        if (ivaTrasladado !== "0.00") {
+           currentY += 5;
+           doc.text("IVA Trasladado:", pdfWidth - 50, currentY);
+           doc.text(`$${ivaTrasladado}`, pdfWidth - 14, currentY, { align: 'right' });
+        }
+        if (isrRetenido !== "0.00") {
+           currentY += 5;
+           doc.text("ISR Retenido:", pdfWidth - 50, currentY);
+           doc.text(`-$${isrRetenido}`, pdfWidth - 14, currentY, { align: 'right' });
+        }
+        if (ivaRetenido !== "0.00") {
+           currentY += 5;
+           doc.text("IVA Retenido:", pdfWidth - 50, currentY);
+           doc.text(`-$${ivaRetenido}`, pdfWidth - 14, currentY, { align: 'right' });
         }
 
-        currentY += 8;
+        currentY += 6;
         doc.setFont("helvetica", "bold");
         doc.text("TOTAL:", pdfWidth - 50, currentY);
         doc.text(`$${total}`, pdfWidth - 14, currentY, { align: 'right' });
 
+        // Sellos (Fiscal Data)
+        let selloY = currentY + 15;
+        if (selloY > pdfHeight - 50) {
+           doc.addPage();
+           selloY = 20;
+        }
+
+        doc.setDrawColor(200, 200, 200);
+        doc.line(14, selloY, pdfWidth - 14, selloY);
+        
+        selloY += 5;
+        doc.setFontSize(6);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(80, 80, 80);
+        doc.text("Información del Timbre Fiscal Digital", 14, selloY);
+        
+        selloY += 4;
+        doc.text(`No. Certificado Emisor: ${noCertificado}`, 14, selloY);
+        doc.text(`No. Certificado SAT: ${noCertificadoSAT}`, 105, selloY);
+        
+        selloY += 4;
+        doc.text(`Fecha y Hora de Certificación: ${fechaTimbrado}`, 14, selloY);
+        doc.text(`RFC Proveedor Certificación: ${rfcProvCertif}`, 105, selloY);
+
+        selloY += 6;
+        doc.text("Sello Digital del Emisor:", 14, selloY);
+        selloY += 3;
+        doc.setFont("helvetica", "normal");
+        const splitSelloCFD = doc.splitTextToSize(selloCFD, pdfWidth - 28);
+        doc.text(splitSelloCFD, 14, selloY);
+        
+        selloY += (splitSelloCFD.length * 3) + 3;
+        doc.setFont("helvetica", "bold");
+        doc.text("Sello Digital del SAT:", 14, selloY);
+        selloY += 3;
+        doc.setFont("helvetica", "normal");
+        const splitSelloSAT = doc.splitTextToSize(selloSAT, pdfWidth - 28);
+        doc.text(splitSelloSAT, 14, selloY);
+        
+        selloY += (splitSelloSAT.length * 3) + 3;
+        doc.setFont("helvetica", "bold");
+        doc.text("Cadena Original del Complemento de Certificación Digital del SAT:", 14, selloY);
+        selloY += 3;
+        doc.setFont("helvetica", "normal");
+        // Reconstruct basic Cadena Original
+        const cadenaOriginal = `||1.1|${timbre?.getAttribute("UUID")}|${fechaTimbrado}|${rfcProvCertif}|${selloCFD}|${noCertificadoSAT}||`;
+        const splitCadena = doc.splitTextToSize(cadenaOriginal, pdfWidth - 28);
+        doc.text(splitCadena, 14, selloY);
+
         // Footer
-        doc.setFontSize(8);
+        doc.setFontSize(7);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(150, 150, 150);
-        doc.text("Este documento es una representación impresa de un CFDI.", pdfWidth / 2, pdfHeight - 20, { align: 'center' });
-        doc.text("Generado profesionalmente por la tecnología de XMLs PRO.", pdfWidth / 2, pdfHeight - 15, { align: 'center' });
+        doc.text("Este documento es una representación impresa de un CFDI.", pdfWidth / 2, pdfHeight - 15, { align: 'center' });
+        doc.text("Generado por la tecnología premium de XMLs PRO.", pdfWidth / 2, pdfHeight - 11, { align: 'center' });
 
         const pdfBlob = doc.output("blob");
         
