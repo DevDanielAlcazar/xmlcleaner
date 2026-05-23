@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "../hooks/useLanguage";
 import { useTheme } from "../hooks/useTheme";
-import { Sun, Moon, Sunset, Globe, CheckCircle2, ShieldCheck, Key, Mail, User, Lock, AlertCircle, Zap, FileCode, Search, ShieldAlert, Scale, FolderTree, BarChart3 } from "lucide-react";
+import { Sun, Moon, Sunset, Globe, CheckCircle2, ShieldCheck, Key, Mail, User, Lock, AlertCircle, Zap, FileCode, Search, ShieldAlert, Scale, FolderTree, BarChart3, Calculator, DownloadCloud, Briefcase } from "lucide-react";
 import { cn } from "../utils/cn";
 import React, { useState } from "react";
 
@@ -346,24 +346,24 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
             <h2 className="text-4xl font-display font-bold mb-4">Características Principales</h2>
             <p className="opacity-50 max-w-2xl mx-auto">Tecnología de punta para el manejo de tus comprobantes fiscales.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
               <div className="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mb-6">
                 <ShieldCheck size={24} />
               </div>
               <h3 className="text-xl font-bold mb-4">Auditoría Estructural</h3>
               <p className="text-sm opacity-60 leading-relaxed">
-                Validamos cada nodo y cálculo de impuestos. No solo limpiamos el archivo, aseguramos que sea fiscalmente perfecto para tus deducciones.
+                Validamos cada nodo y cálculo de impuestos para asegurar que el XML sea fiscalmente rastreable y perfecto.
               </p>
             </div>
             
             <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
-              <div className="w-12 h-12 bg-brand/10 text-brand rounded-2xl flex items-center justify-center mb-6">
-                <Zap size={24} />
+              <div className="w-12 h-12 bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center mb-6">
+                <ShieldAlert size={24} />
               </div>
-              <h3 className="text-xl font-bold mb-4">Reparación de Datos</h3>
+              <h3 className="text-xl font-bold mb-4">Escaner EFOS</h3>
               <p className="text-sm opacity-60 leading-relaxed">
-                Eliminamos caracteres invisibles y corregimos errores de codificación que bloquean la carga en sistemas contables y del SAT.
+                Protege tus deducciones y evita sorpresas filtrando XMLs contra las listas negras (69-B) del SAT automáticamente.
               </p>
             </div>
 
@@ -371,39 +371,59 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
               <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mb-6">
                 <Search size={24} />
               </div>
-              <h3 className="text-xl font-bold mb-4">Inteligencia Fiscal</h3>
+              <h3 className="text-xl font-bold mb-4">Lógica Fiscal Av.</h3>
               <p className="text-sm opacity-60 leading-relaxed">
-                Detección automática de discrepancias en RFC, versiones de CFDI y métodos de pago antes de procesar tus lotes.
-              </p>
-            </div>
-            
-            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
-              <div className="w-12 h-12 bg-indigo-500/10 text-indigo-500 rounded-2xl flex items-center justify-center mb-6">
-                <Scale size={24} />
-              </div>
-              <h3 className="text-xl font-bold mb-4">Conciliación Bancaria</h3>
-              <p className="text-sm opacity-60 leading-relaxed">
-                Cruza tu estado de cuenta en Excel contra cientos de XMLs para detectar las facturas que faltan por registrar o cobrar sin esfuerzo.
+                Detección automática de inconsistencias entre Régimen, Moneda, y Método de Pago PPD vs PUE.
               </p>
             </div>
 
             <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
-              <div className="w-12 h-12 bg-pink-500/10 text-pink-500 rounded-2xl flex items-center justify-center mb-6">
-                <FolderTree size={24} />
+              <div className="w-12 h-12 bg-indigo-500/10 text-indigo-500 rounded-2xl flex items-center justify-center mb-6">
+                <Calculator size={24} />
               </div>
-              <h3 className="text-xl font-bold mb-4">Auto-Filing (Organizador)</h3>
+              <h3 className="text-xl font-bold mb-4">Facturación IA</h3>
               <p className="text-sm opacity-60 leading-relaxed">
-                Olvídate de renombrar XMLs a mano. Arroja todos los archivos revueltos y recibe un ZIP ordenado por Año, Mes y Tipo con RFC.
+                Un asistente experto en generar facturas sin complicaciones. El motor deduce los impuestos y retenciones.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
+              <div className="w-12 h-12 bg-purple-500/10 text-purple-500 rounded-2xl flex items-center justify-center mb-6">
+                <Scale size={24} />
+              </div>
+              <h3 className="text-xl font-bold mb-4">Auditoría PPD vs REP</h3>
+              <p className="text-sm opacity-60 leading-relaxed">
+                Cruza todos tus CFDI de pago PPD con tus REP y detecta huecos, saldos pendientes y evita multas del SAT.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
+              <div className="w-12 h-12 bg-cyan-500/10 text-cyan-500 rounded-2xl flex items-center justify-center mb-6">
+                <DownloadCloud size={24} />
+              </div>
+              <h3 className="text-xl font-bold mb-4">Extracción Masiva</h3>
+              <p className="text-sm opacity-60 leading-relaxed">
+                Descarga hasta 200,000 archivos XML diarios, conectando tu FIEL. Respalda tus CFDI sin captchas ni retrasos.
               </p>
             </div>
             
             <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
+              <div className="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mb-6">
+                <Briefcase size={24} />
+              </div>
+              <h3 className="text-xl font-bold mb-4">Bóveda Multi-RFC</h3>
+              <p className="text-sm opacity-60 leading-relaxed">
+                Para despachos que manejan múltiples entidades. El sistema separa facturas revueltas y las asigna a cada cliente.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
               <div className="w-12 h-12 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center mb-6">
                 <BarChart3 size={24} />
               </div>
-              <h3 className="text-xl font-bold mb-4">Dashboard Financiero</h3>
+              <h3 className="text-xl font-bold mb-4">Dashboard Directivo</h3>
               <p className="text-sm opacity-60 leading-relaxed">
-                Convierte cientos de comprobantes en gráficas instantáneas, resúmenes netos de impuestos (ISR, IVA) y Top de Clientes/Proveedores.
+                Convierte cientos de comprobantes en gráficas instantáneas, resúmenes netos de impuestos (ISR, IVA) y Top Clientes.
               </p>
             </div>
           </div>

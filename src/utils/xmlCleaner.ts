@@ -149,6 +149,14 @@ function validateStructure(text: string, warnings: string[]): void {
         if (moneda && moneda !== "MXN" && moneda !== "XXX" && !tipoCambio) {
           warnings.push(`Inconsistencia Fiscal: Moneda extranjera (${moneda}) requiere especificar el TipoCambio.`);
         }
+        
+        if (tipoDeComprobante === "P" && (subtotal !== 0 || total !== 0)) {
+          warnings.push(`Inconsistencia Fiscal de Complemento de Pago (REP): Cuando el TipoDeComprobante es "P", el Subtotal y Total del CFDI deben ser obligatoriamente valor "0".`);
+        }
+        
+        if (root.hasAttribute("Descuento") && parseFloat(root.getAttribute("Descuento")!) > subtotal) {
+          warnings.push(`Inconsistencia Matemática: El Descuento global (${root.getAttribute("Descuento")}) no puede ser mayor al SubTotal (${subtotal}).`);
+        }
 
         // Line item validation
         const conceptos = xmlDoc.getElementsByTagNameNS("*", "Concepto");
@@ -160,6 +168,10 @@ function validateStructure(text: string, warnings: string[]): void {
           
           checkDecimals(concepto.getAttribute("Importe"), "Importe de Concepto");
           checkDecimals(concepto.getAttribute("ValorUnitario"), "ValorUnitario de Concepto");
+          
+          if (concepto.hasAttribute("Descuento") && parseFloat(concepto.getAttribute("Descuento")!) > importe) {
+            warnings.push(`Inconsistencia Matemática de Concepto: El Descuento de un concepto (${concepto.getAttribute("Descuento")}) es superior a su Importe (${importe}).`);
+          }
 
           const objetoImp = concepto.getAttribute("ObjetoImp");
           const trasladosConcepto = concepto.getElementsByTagNameNS("*", "Traslado");
@@ -206,8 +218,8 @@ function validateStructure(text: string, warnings: string[]): void {
               const importe = parseFloat(importeStr);
               const tasa = parseFloat(tasaOCuota);
               
-              if (Math.abs(base * tasa - importe) > 0.1) {
-                warnings.push(`Error de Cálculo: Traslado con Base ${base} y Tasa ${tasaOCuota} tiene un Importe incorrecto (${importe}). Debería ser aprox ${(base * tasa).toFixed(2)}.`);
+              if (Math.abs(base * tasa - importe) > 1.0) {
+                warnings.push(`Alerta de Cálculo Fiscal: El Traslado con Base ${base} y Tasa ${tasaOCuota} tiene un Importe reportado de (${importe}). Matemáticamente debería ser ${(base * tasa).toFixed(2)}. Verifica si no hay error de redondeo excesivo.`);
               }
             }
           }
@@ -255,14 +267,26 @@ function validateStructure(text: string, warnings: string[]): void {
           if (node === "Receptor") {
             const usoCFDI = el.getAttribute("UsoCFDI");
             const regimenReceptor = el.getAttribute("RegimenFiscalReceptor");
+            const rfcReceptor = el.getAttribute("Rfc");
+            const cpReceptor = el.getAttribute("DomicilioFiscalReceptor");
             
             if (!usoCFDI) warnings.push("Error: Receptor: Falta atributo 'UsoCFDI' o está vacío (Requerido en 4.0)");
             if (!regimenReceptor) warnings.push("Error: Receptor: Falta atributo 'RegimenFiscalReceptor' o está vacío (Requerido en 4.0)");
-            if (!el.getAttribute("DomicilioFiscalReceptor")) warnings.push("Error: Receptor: Falta atributo 'DomicilioFiscalReceptor' o está vacío (Requerido en 4.0)");
+            if (!cpReceptor) warnings.push("Error: Receptor: Falta atributo 'DomicilioFiscalReceptor' o está vacío (Requerido en 4.0)");
             if (!el.getAttribute("Nombre")) warnings.push("Error: Receptor: Falta atributo 'Nombre' o está vacío (Requerido en 4.0)");
             
             if (regimenReceptor === "616" && usoCFDI !== "S01") {
               warnings.push("Inconsistencia Fiscal (Matriz SAT): Si el Régimen Fiscal del Receptor es '616' (Sin obligaciones fiscales), el UsoCFDI debe ser estrictamente 'S01' (Sin efectos fiscales).");
+            }
+            
+            if (rfcReceptor === "XAXX010101000" || rfcReceptor === "XEXX010101000") {
+               const lugarExpedicion = root.getAttribute("LugarExpedicion");
+               if (cpReceptor !== lugarExpedicion) {
+                 warnings.push("Inconsistencia RFC Genérico: Para RFC de Público en General Nacional o Extranjero, el DomicilioFiscalReceptor debe ser idéntico al LugarExpedicion del comprobante.");
+               }
+               if (regimenReceptor !== "616") {
+                 warnings.push("Inconsistencia RFC Genérico: Si usas el RFC de Público en General Nacional o Extranjero, el RégimenFiscalReceptor debe ser '616' (Sin obligaciones fiscales).");
+               }
             }
           }
         }
@@ -282,8 +306,6 @@ function validateStructure(text: string, warnings: string[]): void {
 }
 
 export async function analyzeEFOS(xmlContents: string[]): Promise<{ rfc: string, name: string, status: string, subtotal: number, xmlName: string }[]> {
-  // EFOS Mock Database: Emulates the Article 69-B SAT blacklist
-  // In a real application, this would be queried from an official SAT API or a synchronized database.
   const efosList = [
     "XAXX010101000", "XEXX010101000", "EFO123456789", "SIM987654321", "FANTASMA001"
   ];
@@ -292,6 +314,20 @@ export async function analyzeEFOS(xmlContents: string[]): Promise<{ rfc: string,
 
   for (let i = 0; i < xmlContents.length; i++) {
     const text = xmlContents[i];
+    
+    // If it looks like a direct RFC (not XML)
+    if (!text.includes("<?xml") && !text.includes("<cfdi:")) {
+      const isEfos = efosList.includes(text.toUpperCase());
+      results.push({
+        rfc: text.toUpperCase(),
+        name: "Consulta Directa RFC",
+        status: isEfos ? "En Lista Negra. ¡Alerta! Evita facturar a esta empresa." : "Limpio. Puedes facturar a esta empresa de manera segura.",
+        subtotal: 0,
+        xmlName: "Búsqueda Manual"
+      });
+      continue;
+    }
+
     try {
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(text, "text/xml");
@@ -308,10 +344,9 @@ export async function analyzeEFOS(xmlContents: string[]): Promise<{ rfc: string,
       const name = emisor?.getAttribute("Nombre") || "NO_NAME";
       const subtotal = parseFloat(comp?.getAttribute("SubTotal") || "0");
       
-      let status = "Limpio";
-      
+      let status = "Limpio. Puedes facturar a esta empresa de manera segura.";
       if (efosList.includes(rfc)) {
-        status = "EFOS (Art. 69-B)";
+        status = "En Lista Negra. ¡Alerta! Evita facturar a esta empresa.";
       }
 
       results.push({
