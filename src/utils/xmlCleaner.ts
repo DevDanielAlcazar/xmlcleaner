@@ -305,11 +305,30 @@ function validateStructure(text: string, warnings: string[]): void {
   }
 }
 
+let satDatabase: Record<string, string> = {
+  "EFO123456789": "OPERADORA SIMULADA SA DE CV",
+  "SIM987654321": "FACTURADORA FANTASMA SC",
+  "FANTASMA001": "COMERCIALIZADORA ILICITA S DE RL"
+};
+
+export function setEfosDatabase(csvText: string) {
+  const lines = csvText.split('\n');
+  let loaded = 0;
+  for (const line of lines) {
+    const parts = line.split(',');
+    if (parts.length >= 2) {
+      const rfc = parts[0].trim().toUpperCase();
+      const name = parts[1].trim();
+      if (rfc.length >= 10 && rfc.length <= 13) {
+        satDatabase[rfc] = name || "Nombre no especificado en CSV";
+        loaded++;
+      }
+    }
+  }
+  return loaded;
+}
+
 export async function analyzeEFOS(xmlContents: string[]): Promise<{ rfc: string, name: string, status: string, subtotal: number, xmlName: string }[]> {
-  const efosList = [
-    "XAXX010101000", "XEXX010101000", "EFO123456789", "SIM987654321", "FANTASMA001"
-  ];
-  
   const results = [];
 
   for (let i = 0; i < xmlContents.length; i++) {
@@ -317,13 +336,15 @@ export async function analyzeEFOS(xmlContents: string[]): Promise<{ rfc: string,
     
     // If it looks like a direct RFC (not XML)
     if (!text.includes("<?xml") && !text.includes("<cfdi:")) {
-      const isEfos = efosList.includes(text.toUpperCase());
+      const rfc = text.toUpperCase().trim();
+      const efosName = satDatabase[rfc];
+      const isEfos = !!efosName;
       results.push({
-        rfc: text.toUpperCase(),
-        name: "Consulta Directa RFC",
-        status: isEfos ? "En Lista Negra. ¡Alerta! Evita facturar a esta empresa." : "Limpio. Puedes facturar a esta empresa de manera segura.",
+        rfc: rfc,
+        name: isEfos ? efosName : "Búsqueda Directa",
+        status: isEfos ? "En Lista Negra (Art 69-B). ¡Alerta! Evita facturar a esta empresa." : "Limpio. Puedes facturar a la empresa de manera segura.",
         subtotal: 0,
-        xmlName: "Búsqueda Manual"
+        xmlName: "Consulta Manual"
       });
       continue;
     }
@@ -344,14 +365,17 @@ export async function analyzeEFOS(xmlContents: string[]): Promise<{ rfc: string,
       const name = emisor?.getAttribute("Nombre") || "NO_NAME";
       const subtotal = parseFloat(comp?.getAttribute("SubTotal") || "0");
       
-      let status = "Limpio. Puedes facturar a esta empresa de manera segura.";
-      if (efosList.includes(rfc)) {
-        status = "En Lista Negra. ¡Alerta! Evita facturar a esta empresa.";
+      const efosName = satDatabase[rfc.toUpperCase()];
+      const isEfos = !!efosName;
+      
+      let status = "Limpio. Puedes facturar a la empresa de manera segura.";
+      if (isEfos) {
+        status = "En Lista Negra (Art 69-B). ¡Alerta! Evita facturar a esta empresa.";
       }
 
       results.push({
         rfc,
-        name,
+        name: isEfos ? `${name} (SAT: ${efosName})` : name,
         status,
         subtotal,
         xmlName: `XML_${i + 1}`

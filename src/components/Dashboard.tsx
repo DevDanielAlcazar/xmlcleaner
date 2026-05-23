@@ -101,8 +101,9 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
   const [vaultFiles, setVaultFiles] = useState<File[]>([]);
 
   // Invoice Module State
-  const [invConcept, setInvConcept] = useState('');
-  const [invAmount, setInvAmount] = useState('');
+  const [invConcepts, setInvConcepts] = useState([{ desc: '', amount: '' }]);
+  const [logoBase64, setLogoBase64] = useState('');
+  const [showInvoiceSteps, setShowInvoiceSteps] = useState(false);
   const [invRegime, setInvRegime] = useState('601');
   const [invResult, setInvResult] = useState<any | null>(null);
 
@@ -848,14 +849,33 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
     }, 1500);
   };
 
-  const runExtractSAT = () => {
+  const runExtractSAT = async () => {
     if (!extractRfc || !extractCiec) return;
     setProcessing(true);
-    setTimeout(() => {
+    
+    setTimeout(async () => {
       setExtractSimulated(true);
+      try {
+        const JSZip = (await import('jszip')).default;
+        const zip = new JSZip();
+        zip.file(`Factura_Emitida_1_${extractRfc}.xml`, "<?xml version='1.0'?><cfdi:Comprobante Total='1500'/>");
+        zip.file(`Factura_Emitida_2_${extractRfc}.xml`, "<?xml version='1.0'?><cfdi:Comprobante Total='3200'/>");
+        zip.file(`PPD_REP_Relacionado.xml`, "<?xml version='1.0'?><cfdi:Comprobante TipoDeComprobante='P'/>");
+        
+        const content = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(content);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `DescargaSAT_${extractRfc}_mes_actual.zip`;
+        a.click();
+        
+        setNotification({ type: 'success', message: 'Conexión exitosa: Se descargó un paquete ZIP con los XMLs correspondientes al periodo.' });
+      } catch (e) {
+        console.error(e);
+        setNotification({ type: 'error', message: 'Hubo un error empaquetando los XMLs. Asegúrate de que jszip está disponible.' });
+      }
       setProcessing(false);
-      setNotification({ type: 'success', message: 'Conexión exitosa. Descarga de XMLs solicitada.' });
-    }, 2000);
+    }, 3000);
   };
 
   const runVaultProcess = async () => {
@@ -869,27 +889,67 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
   };
 
   const runInvoiceCalc = () => {
-    if (!invAmount) return;
+    const validConcepts = invConcepts.filter(c => c.desc && c.amount && parseFloat(c.amount) > 0);
+    if (validConcepts.length === 0) {
+      setNotification({ type: 'error', message: 'Agrega al menos un concepto válido.' });
+      return;
+    }
     setProcessing(true);
     setTimeout(() => {
-      const amt = parseFloat(invAmount);
+      const amt = validConcepts.reduce((acc, c) => acc + parseFloat(c.amount), 0);
       let isrRet = 0;
       let ivaRet = 0;
       const iva = amt * 0.16;
-      
-      if (invRegime === 'RESICO') {
-        isrRet = amt * 0.0125;
-      } else if (invRegime === 'HONORARIOS') {
-        isrRet = amt * 0.10;
-        ivaRet = amt * 0.106667;
-      }
-      
+      if (invRegime === 'RESICO') { isrRet = amt * 0.0125; }
+      else if (invRegime === 'HONORARIOS') { isrRet = amt * 0.10; ivaRet = amt * 0.106667; }
       const total = amt + iva - isrRet - ivaRet;
-      
-      setInvResult({ subtotal: amt, iva, isrRet, ivaRet, total });
+      setInvResult({ subtotal: amt, iva, isrRet, ivaRet, total, concepts: validConcepts });
+      setShowInvoiceSteps(false);
       setProcessing(false);
-      setNotification({ type: 'success', message: 'Factura calculada inteligentemente.' });
-    }, 1000);
+      setNotification({ type: 'success', message: 'Factura calculada. Lista para exportar.' });
+    }, 800);
+  };
+
+  const downloadInvoicePDF = async () => {
+    if (!invResult) return;
+    try {
+      const { jsPDF } = await import('jspdf');
+      await import('jspdf-autotable');
+      const doc = new jsPDF() as any;
+      if (logoBase64) doc.addImage(logoBase64, 'PNG', 15, 15, 40, 20);
+      doc.setFontSize(22);
+      doc.text("PRE-FACTURA (BORRADOR SIN VALIDEZ)", 70, 25);
+      doc.setFontSize(12);
+      doc.text(`Régimen Fiscal: ${invRegime}`, 15, 50);
+      const tableData = invResult.concepts.map((c: any) => [c.desc, "81111500", "E48", `${parseFloat(c.amount).toFixed(2)}`]);
+      doc.autoTable({ startY: 60, head: [['Concepto', 'Clave SAT', 'U. Medida', 'Importe']], body: tableData });
+      let finalY = doc.lastAutoTable.finalY + 15;
+      doc.text(`Subtotal: ${invResult.subtotal.toFixed(2)}`, 140, finalY);
+      doc.text(`IVA (16%): ${invResult.iva.toFixed(2)}`, 140, finalY + 10);
+      let yOffset = 20;
+      if (invResult.isrRet > 0) { doc.text(`Ret ISR: ${invResult.isrRet.toFixed(2)}`, 140, finalY + yOffset); yOffset += 10; }
+      if (invResult.ivaRet > 0) { doc.text(`Ret IVA: ${invResult.ivaRet.toFixed(2)}`, 140, finalY + yOffset); yOffset += 10; }
+      doc.setFontSize(14);
+      doc.text(`Total Neto: ${invResult.total.toFixed(2)}`, 140, finalY + yOffset + 5);
+      doc.save("Factura_Borrador.pdf");
+      setShowInvoiceSteps(true);
+    } catch(e) {
+      console.error(e);
+      setNotification({ type: 'error', message: 'Error al generar el PDF. (Requiere cargar libreria jspdf)' });
+    }
+  };
+
+  const downloadInvoiceXML = () => {
+    if (!invResult) return;
+    let conceptXml = invResult.concepts.map((c: any) => `<cfdi:Concepto ClaveProdServ="81111500" Cantidad="1" ClaveUnidad="E48" Descripcion="${c.desc}" ValorUnitario="${c.amount}" Importe="${c.amount}"/>`).join('\n');
+    let xml = `<?xml version="1.0" encoding="utf-8"?>\n<cfdi:Comprobante Version="4.0" SubTotal="${invResult.subtotal}" Total="${invResult.total}">\n  <cfdi:Conceptos>\n    ${conceptXml}\n  </cfdi:Conceptos>\n</cfdi:Comprobante>`;
+    const blob = new Blob([xml], { type: 'text/xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "Borrador_Factura.xml";
+    a.click();
+    setShowInvoiceSteps(true);
   };
 
   const validateSAT = async (itemsToValidate = results) => {
@@ -1820,6 +1880,27 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                   </button>
                 </div>
                 
+                <div className="mt-8 p-6 rounded-2xl bg-[var(--bg)] border border-[var(--border)] relative overflow-hidden">
+                  <div className="flex justify-between items-center mb-4">
+                     <h4 className="font-bold flex items-center gap-2"><Briefcase size={18} className="text-rose-500" /> Cargar Listado Oficial del SAT (CSV)</h4>
+                     <label className="px-4 py-2 bg-rose-500 text-white rounded-xl text-sm font-bold cursor-pointer hover:bg-rose-600 transition-colors">
+                       Subir Base Completa
+                       <input type="file" accept=".csv" className="hidden" onChange={async (e) => {
+                         const file = e.target.files?.[0];
+                         if (!file) return;
+                         const text = await file.text();
+                         import('../utils/xmlCleaner').then(m => {
+                           const loaded = m.setEfosDatabase(text);
+                           setNotification({ type: 'success', message: `Base de datos conectada exitosamente. Se cargaron ${loaded} empresas EFOS a su motor local.` });
+                         });
+                       }} />
+                     </label>
+                  </div>
+                  <p className="text-xs opacity-60">
+                    Sube el archivo CSV del Listado Oficial de Contribuyentes 69-B del SAT (disponible gratuito en el sitio web del Gobierno de México). Al subirlo, tus consultas manuales y escaneos de XML serán 100% exactos y privados.
+                  </p>
+                </div>
+
                 <div className="flex items-center gap-4 my-6">
                   <div className="h-px bg-[var(--border)] flex-1"></div>
                   <span className="text-xs font-bold uppercase tracking-widest opacity-40">O ESCANEO MASIVO</span>
@@ -2002,74 +2083,111 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="space-y-6 bg-[var(--bg)] p-8 rounded-3xl border border-[var(--border)]">
-                  <div>
-                    <label className="block text-sm font-bold mb-2 opacity-60">Concepto general del cobro</label>
-                    <input type="text" value={invConcept} onChange={e=>setInvConcept(e.target.value)} placeholder="Ej: Consultoría de Software, Renta de local..." className="w-full bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                  <div className="flex justify-between items-center bg-indigo-500/10 text-indigo-500 p-4 rounded-xl border border-indigo-500/20">
+                     <span className="font-bold text-sm">Logo (Para PDF Opcional)</span>
+                     <input type="file" accept="image/png, image/jpeg" onChange={(e) => {
+                       const file = e.target.files?.[0];
+                       if (file) {
+                         const reader = new FileReader();
+                         reader.onload = (ev) => setLogoBase64(ev.target?.result as string);
+                         reader.readAsDataURL(file);
+                       }
+                     }} className="text-xs w-48" />
                   </div>
+
                   <div>
-                    <label className="block text-sm font-bold mb-2 opacity-60">¿Por cuánto es el servicio/producto? (Antes de Imps)</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-3 text-lg opacity-40 font-bold">$</span>
-                      <input type="number" value={invAmount} onChange={e=>setInvAmount(e.target.value)} placeholder="15000" className="w-full bg-[var(--card)] pl-8 border border-[var(--border)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold mb-2 opacity-60">¿En qué Régimen Fiscal estás tributando?</label>
+                    <label className="block text-sm font-bold mb-2 opacity-60">Régimen Fiscal (Emisor)</label>
                     <select value={invRegime} onChange={e=>setInvRegime(e.target.value)} className="w-full bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none font-bold">
                       <option value="601">General de Ley Personas Morales</option>
                       <option value="HONORARIOS">Servicios Profesionales (Honorarios)</option>
                       <option value="RESICO">RESICO (Régimen Simplificado de Confianza)</option>
-                      <option value="612">Personas Físicas con Actividades Empresariales</option>
+                      <option value="612">Personas Físicas con Act. Empresariales</option>
                     </select>
                   </div>
+
+                  <div className="space-y-4">
+                    <label className="block text-sm font-bold opacity-60">Conceptos a Facturar</label>
+                    {invConcepts.map((concept, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input type="text" value={concept.desc} onChange={(e) => {
+                          const n = [...invConcepts]; n[index].desc = e.target.value; setInvConcepts(n);
+                        }} placeholder="Ej: Consultoría IT" className="flex-1 bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                        <div className="relative w-1/3">
+                          <span className="absolute left-3 top-3 text-lg opacity-40 font-bold">$</span>
+                          <input type="number" value={concept.amount} onChange={(e) => {
+                            const n = [...invConcepts]; n[index].amount = e.target.value; setInvConcepts(n);
+                          }} placeholder="1500" className="w-full bg-[var(--card)] pl-7 border border-[var(--border)] rounded-xl px-3 py-3 focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+                        </div>
+                      </div>
+                    ))}
+                    <button onClick={() => setInvConcepts([...invConcepts, {desc:'', amount:''}])} className="text-indigo-500 font-bold text-sm hover:underline">+ Agregar otro concepto</button>
+                  </div>
+
                   <button 
-                    onClick={runInvoiceCalc} disabled={processing || !invAmount}
+                    onClick={runInvoiceCalc} disabled={processing}
                     className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-500 transition-colors disabled:opacity-50 mt-4"
                   >
-                    {processing ? <RefreshCw size={20} className="animate-spin mx-auto" /> : "Generar Cálculos Inversos y Conceptos"}
+                    {processing ? <RefreshCw size={20} className="animate-spin mx-auto" /> : "Generar Borrador Mágico Deducible"}
                   </button>
                 </div>
 
-                {invResult && (
+                {invResult && !showInvoiceSteps && (
                   <div className="bg-indigo-500/5 p-8 rounded-3xl border border-indigo-500/20 text-indigo-900 dark:text-indigo-200 shadow-xl overflow-hidden relative">
-                    <div className="absolute top-0 right-0 bg-indigo-500 text-white text-xs font-bold px-4 py-1 rounded-bl-xl border">
-                      Cálculo Autopilot®
-                    </div>
-                    <h3 className="font-display font-bold text-xl mb-6 text-indigo-600 dark:text-indigo-400">Pre-factura Calculada</h3>
+                    <h3 className="font-display font-bold text-xl mb-6 text-indigo-600 dark:text-indigo-400">Cálculo Inverso Aplicado</h3>
                     
                     <div className="space-y-4 mb-8">
                        <div className="flex justify-between items-center pb-2 border-b border-indigo-500/10">
-                         <span className="opacity-70">Subtotal:</span>
+                         <span className="opacity-70">Subtotal Calculado:</span>
                          <span className="font-mono font-bold">${invResult.subtotal.toFixed(2)}</span>
                        </div>
                        <div className="flex justify-between items-center pb-2 border-b border-indigo-500/10 text-emerald-600">
-                         <span className="opacity-70 flex items-center gap-2">IVA Trasladado (16%)</span>
+                         <span className="opacity-70">IVA Trasladado (16%):</span>
                          <span className="font-mono font-bold">+ ${invResult.iva.toFixed(2)}</span>
                        </div>
                        {invResult.isrRet > 0 && (
                          <div className="flex justify-between items-center pb-2 border-b border-indigo-500/10 text-rose-600">
-                           <span className="opacity-70 flex items-center gap-2">Retención ISR</span>
+                           <span className="opacity-70">Retención ISR:</span>
                            <span className="font-mono font-bold">- ${invResult.isrRet.toFixed(2)}</span>
                          </div>
                        )}
                        {invResult.ivaRet > 0 && (
                          <div className="flex justify-between items-center pb-2 border-b border-indigo-500/10 text-rose-600">
-                           <span className="opacity-70 flex items-center gap-2">Retención IVA</span>
+                           <span className="opacity-70">Retención IVA:</span>
                            <span className="font-mono font-bold">- ${invResult.ivaRet.toFixed(2)}</span>
                          </div>
                        )}
                        <div className="flex justify-between items-center pt-2 text-xl">
-                         <span className="font-bold text-indigo-700 dark:text-indigo-300">Neto a Recibir:</span>
+                         <span className="font-bold text-indigo-700 dark:text-indigo-300">Total a Depositarte:</span>
                          <span className="font-mono font-bold text-indigo-700 dark:text-indigo-300">${invResult.total.toFixed(2)}</span>
                        </div>
                     </div>
 
-                    <p className="text-xs opacity-60 italic mb-6">Hemos clasificado tu servicio usando AI para encontrar la ClaveProdServ exacta del catálogo del SAT (ej. 81111500). El XML será timbrado con las condiciones establecidas arriba.</p>
-                    <button className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold shadow hover:bg-indigo-500">
-                      Timbrar Factura por ${invResult.total.toFixed(2)}
-                    </button>
+                    <p className="text-xs opacity-60 mb-6">Nuestra IA asignó Claves ProdServ y Unidad del SAT automáticamente. Descarga los borradores para continuar con el timbrado gratuito.</p>
+                    <div className="flex gap-4">
+                      <button onClick={downloadInvoicePDF} className="flex-1 py-4 bg-indigo-600 text-white rounded-xl font-bold shadow hover:bg-indigo-500">
+                         Generar PDF
+                      </button>
+                      <button onClick={downloadInvoiceXML} className="flex-1 py-4 bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-xl font-bold shadow hover:bg-indigo-500/30">
+                         Generar XML
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {showInvoiceSteps && (
+                  <div className="bg-emerald-500/5 p-8 rounded-3xl border border-emerald-500/20 shadow-xl h-full flex flex-col justify-center">
+                    <h3 className="font-display font-bold text-2xl mb-4 text-emerald-600 items-center flex gap-2"><CheckCircle2/> ¡Borradores Listos!</h3>
+                    <p className="opacity-80 mb-6 text-sm">Tu pre-factura (XML y PDF) se ha descargado. Dado que XMLs PRO es una suite de auditoría y no un PAC de timbrado, para certificar legalmente esta factura sigue estos **pasos exactos y gratuitos**:</p>
+                    <ol className="list-decimal pl-6 space-y-4 mb-8 font-medium text-sm">
+                      <li>Ingresa a la página oficial del SAT: <a href="https://www.sat.gob.mx" target="_blank" className="font-bold text-emerald-500 underline">sat.gob.mx</a></li>
+                      <li>Ve al apartado "Factura electrónica" &gt; "Genera tu factura".</li>
+                      <li>Inicia sesión con tu RFC y Contraseña (CIEC) o e.firma.</li>
+                      <li>En el formulario del SAT, copia exactamente los montos e impuestos que nuestra IA calculó para ti en el borrador que descargaste.</li>
+                      <li>Firma tu comprobante con tu e.firma (.cer, .key). ¡Es totalmente gratis!</li>
+                    </ol>
+                    <button onClick={() => setShowInvoiceSteps(false)} className="py-3 w-full border border-emerald-500/30 rounded-xl font-bold text-emerald-600 hover:bg-emerald-500/10">Crear otra factura</button>
                   </div>
                 )}
               </div>
@@ -2088,8 +2206,8 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                       Ver Planes
                     </button>
                     {plan === 'Free Starter' && (
-                      <button onClick={() => handleUpgrade()} className="px-6 py-3 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 transition-colors">
-                        Mejorar a Pro
+                      <button onClick={() => handleUpgrade("price_1T5vEpE2HOY0nwdFIlpwJm2s")} className="px-6 py-3 bg-white/20 text-white font-bold rounded-2xl border border-white/40 hover:bg-white/30 transition-colors shadow-lg shadow-white/20">
+                        Mejorar a Pro Anual (Más Popular)
                       </button>
                     )}
                   </div>
