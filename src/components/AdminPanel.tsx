@@ -17,9 +17,11 @@ import {
   ArrowUpRight,
   RefreshCw,
   LogOut,
-  X
+  X,
+  Download
 } from "lucide-react";
 import { cn } from "../utils/cn";
+import * as XLSX from "xlsx";
 
 export default function AdminPanel({ onBack, user }: { onBack: () => void, user: any }) {
   const { t } = useLanguage();
@@ -145,6 +147,25 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
     } catch (err) {
       console.error("Error upgrading user:", err);
     }
+  };
+
+  const handleExportUsers = () => {
+    const dataToExport = userList.map(u => ({
+      ID: u.id,
+      Nombre: u.name,
+      Email: u.email,
+      Plan: u.plan,
+      Créditos: u.credits,
+      Rol: u.role,
+      "Fecha de Registro": u.joined
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Usuarios");
+    
+    // Generate buffer
+    XLSX.writeFile(workbook, `Usuarios_XMLs_PRO_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   return (
@@ -356,6 +377,13 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
                 <h3 className="font-bold text-lg">User Directory</h3>
                 <p className="text-xs opacity-40">Manage and monitor your user base.</p>
               </div>
+              <button 
+                onClick={handleExportUsers}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors shadow-lg shadow-emerald-500/20"
+              >
+                <Download size={14} />
+                Exportar Excel
+              </button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[800px]">

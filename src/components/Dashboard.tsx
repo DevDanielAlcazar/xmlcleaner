@@ -1330,7 +1330,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
             </div>
           ) : activeTab === 'concil' ? (
             <div className="lg:col-span-3 p-6 lg:p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
-              <div className="flex justify-between items-center mb-12">
+              <div className="flex justify-between items-center mb-6">
                 <div>
                   <h2 className="text-3xl font-display font-bold mb-2">Conciliación Inteligente</h2>
                   <p className="text-sm opacity-40 max-w-md">Sube tu estado de cuenta en Excel y los XMLs para detectar faltantes.</p>
@@ -1339,6 +1339,20 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                    <Scale size={32} />
                 </div>
               </div>
+
+              {/* Excel Instructions */}
+              <div className="mb-10 p-6 rounded-2xl bg-blue-500/5 border border-blue-500/20 text-blue-600 dark:text-blue-400">
+                <h4 className="font-bold flex items-center gap-2 mb-2">
+                  <span className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-xs text-blue-600 dark:text-blue-400">i</span>
+                  Instrucciones Estrictas para tu Excel (.xlsx)
+                </h4>
+                <ul className="text-sm space-y-2 opacity-80 pl-8 list-disc">
+                  <li><strong>Primera hoja:</strong> La información debe estar alojada exclusivamente en la primera pestaña (Hoja 1) del libro.</li>
+                  <li><strong>Formato Numérico:</strong> Los importes de las transacciones (Depositos, Giros, Cargos o Abonos) deben estar formateados en Excel estrictamente como `Número` o `Moneda`. Si los números están mezclados con letras o formato de texto plano (ej. "$ 1,500 MXN") cruzará incorrectamente.</li>
+                  <li><strong>Encabezados Libres:</strong> No requieres nombrar las columnas de una forma en particular, los algoritmos buscarán coincidencias matemáticas con los "Totales" de los XMLs en todas las casillas numéricas de las filas.</li>
+                </ul>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                 <div className="space-y-4">
                   <h3 className="font-bold flex items-center gap-2"><FileCode size={18} className="text-blue-500" /> Archivo Bancario (Excel)</h3>
