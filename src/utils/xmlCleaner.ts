@@ -138,10 +138,16 @@ function validateStructure(text: string, warnings: string[]): void {
         const metodoPago = root.getAttribute("MetodoPago");
         const formaPago = root.getAttribute("FormaPago");
         if (metodoPago === "PPD" && formaPago !== "99") {
-          warnings.push(`Error: Si MetodoPago es PPD, FormaPago debe ser 99 (Por definir).`);
+          warnings.push(`Inconsistencia Fiscal: Si MetodoPago es PPD (Pago en Parcialidades o Diferido), FormaPago debe ser obligatoriamente '99' (Por definir).`);
         }
         if (metodoPago === "PUE" && formaPago === "99") {
-          warnings.push(`Error: Si MetodoPago es PUE, FormaPago no puede ser 99.`);
+          warnings.push(`Inconsistencia Fiscal: Si MetodoPago es PUE (Pago en una sola exhibición), FormaPago no puede ser '99'.`);
+        }
+        
+        const moneda = root.getAttribute("Moneda");
+        const tipoCambio = root.getAttribute("TipoCambio");
+        if (moneda && moneda !== "MXN" && moneda !== "XXX" && !tipoCambio) {
+          warnings.push(`Inconsistencia Fiscal: Moneda extranjera (${moneda}) requiere especificar el TipoCambio.`);
         }
 
         // Line item validation
@@ -247,10 +253,17 @@ function validateStructure(text: string, warnings: string[]): void {
             }
           }
           if (node === "Receptor") {
-            if (!el.getAttribute("UsoCFDI")) warnings.push("Error: Receptor: Falta atributo 'UsoCFDI' o está vacío (Requerido en 4.0)");
-            if (!el.getAttribute("RegimenFiscalReceptor")) warnings.push("Error: Receptor: Falta atributo 'RegimenFiscalReceptor' o está vacío (Requerido en 4.0)");
+            const usoCFDI = el.getAttribute("UsoCFDI");
+            const regimenReceptor = el.getAttribute("RegimenFiscalReceptor");
+            
+            if (!usoCFDI) warnings.push("Error: Receptor: Falta atributo 'UsoCFDI' o está vacío (Requerido en 4.0)");
+            if (!regimenReceptor) warnings.push("Error: Receptor: Falta atributo 'RegimenFiscalReceptor' o está vacío (Requerido en 4.0)");
             if (!el.getAttribute("DomicilioFiscalReceptor")) warnings.push("Error: Receptor: Falta atributo 'DomicilioFiscalReceptor' o está vacío (Requerido en 4.0)");
             if (!el.getAttribute("Nombre")) warnings.push("Error: Receptor: Falta atributo 'Nombre' o está vacío (Requerido en 4.0)");
+            
+            if (regimenReceptor === "616" && usoCFDI !== "S01") {
+              warnings.push("Inconsistencia Fiscal (Matriz SAT): Si el Régimen Fiscal del Receptor es '616' (Sin obligaciones fiscales), el UsoCFDI debe ser estrictamente 'S01' (Sin efectos fiscales).");
+            }
           }
         }
       });

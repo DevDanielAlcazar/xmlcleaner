@@ -1689,8 +1689,8 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
             <div className="lg:col-span-3 p-6 lg:p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
               <div className="flex justify-between items-center mb-12">
                 <div>
-                  <h2 className="text-3xl font-display font-bold mb-2 text-rose-500">Escáner EFOS (Art. 69-B)</h2>
-                  <p className="text-sm opacity-60 max-w-md">Cruza tus proveedores contra la lista negra del SAT para detectar Facturadores de Operaciones Simuladas.</p>
+                  <h2 className="text-3xl font-display font-bold mb-2 text-rose-500">Auditoría Preventiva EFOS (Art. 69-B)</h2>
+                  <p className="text-sm opacity-60 max-w-md">Protege la deducibilidad de tus gastos y prevén multas cruzando a tus proveedores contra la lista negra del SAT.</p>
                 </div>
                 <div className="w-16 h-16 rounded-3xl bg-rose-500/10 flex items-center justify-center text-rose-500">
                    <ShieldAlert size={32} />
@@ -1700,9 +1700,9 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
               <div className="mb-10 p-6 rounded-2xl bg-rose-500/5 border border-rose-500/20 text-rose-600 dark:text-rose-400">
                 <h4 className="font-bold flex items-center gap-2 mb-2">
                   <span className="w-6 h-6 rounded-full bg-rose-500/20 flex items-center justify-center text-xs text-rose-600 dark:text-rose-400">!</span>
-                  Aviso de Base de Datos
+                  Prevención de Riesgos 100% Segura
                 </h4>
-                <p className="text-sm opacity-80 leading-relaxed font-semibold">Esta herramienta cruzará tus XMLs contra nuestra base de EFOS Definitivos y Presuntos local (Art 69-B). Esta revisión no deja huella fiscal ni alerta al SAT directamente de tu consulta.</p>
+                <p className="text-sm opacity-80 leading-relaxed font-semibold">Usar esta herramienta te ayuda a prevenir sanciones y rechazos de deducciones mediante la identificación temprana de Facturadores de Operaciones Simuladas (EFOS). El análisis es estrictamente local y confidencial: no dejamos huella fiscal y no se envía ninguna alerta al SAT de tu consulta.</p>
               </div>
 
               <div className="space-y-4 mb-8">
@@ -1901,12 +1901,54 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                         <ShieldAlert size={20} />
                       </div>
                       <div>
-                        <h4 className="font-bold mb-1">Escáner EFOS (Operaciones Simuladas)</h4>
-                        <p className="text-xs opacity-60 leading-relaxed">Cruza automáticamente todos tus XMLs contra la lista negra del artículo 69-B del SAT para detectar riesgos fiscales con EFOS.</p>
+                        <h4 className="font-bold mb-1">Auditoría Preventiva EFOS (Art. 69-B)</h4>
+                        <p className="text-xs opacity-60 leading-relaxed">Cruza automáticamente tus proveedores contra la lista oficial del SAT. Funciona 100% de manera local para tu seguridad, sin reportar consultas, evitando recargos y pérdida de deducibilidad.</p>
                       </div>
                     </li>
                   </ul>
                 </div>
+
+                <div className="p-8 rounded-3xl bg-[var(--bg)] border border-[var(--border)] border-l-4 border-l-brand relative overflow-hidden">
+                  <div className="absolute -right-10 -top-10 text-brand/5 rotate-12">
+                     <Zap size={150} />
+                  </div>
+                  <h3 className="text-xl font-display font-bold mb-6 flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-xl bg-brand/10 flex items-center justify-center text-brand">🚀</span>
+                    Próximos Módulos (En Desarrollo)
+                  </h3>
+                  <p className="text-sm opacity-60 mb-8 max-w-2xl">Estamos construyendo las herramientas definitivas para automatizar el 100% del trabajo manual de despachos y áreas contables. Muy pronto en tu membresía Pro Unlimited.</p>
+                  
+                  <ul className="space-y-6">
+                    <li className="flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
+                        <Scale size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold mb-1">Auditoría PPD vs REP (Complementos de Pago)</h4>
+                        <p className="text-xs opacity-60 leading-relaxed">El fin de las multas por REP. Cruza masivamente todas tus facturas con Método de Pago "PPD" contra tus recibos (REP) para detectar automáticamente facturas "vivas", REPs faltantes o diferencias por centavos.</p>
+                      </div>
+                    </li>
+                    <li className="flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-500 flex items-center justify-center shrink-0">
+                        <Globe size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold mb-1">Extracción Masiva SAT (Direct Connect)</h4>
+                        <p className="text-xs opacity-60 leading-relaxed">Conecta tu CIEC o e.firma de forma segura y automatiza la descarga de hasta 200,000 XMLs al mes. Olvídate de los captchas y las caídas del portal del SAT.</p>
+                      </div>
+                    </li>
+                    <li className="flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                        <FolderTree size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold mb-1">Bóveda Multi-RFC (Para Despachos)</h4>
+                        <p className="text-xs opacity-60 leading-relaxed">Sube un archivo ZIP gigante con revueltos de todos tus clientes. El sistema detectará a quién pertenece cada uno y creará carpetas y analíticas aisladas por cada Razón Social.</p>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+
               </div>
             </div>
           ) : activeTab === 'history' ? (
