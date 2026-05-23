@@ -31,10 +31,11 @@ import {
   FileImage,
   BarChart3,
   FolderTree,
-  Scale
+  Scale,
+  ShieldAlert
 } from "lucide-react";
 import { cn } from "../utils/cn";
-import { cleanXML, CleanResult } from "../utils/xmlCleaner";
+import { cleanXML, CleanResult, analyzeEFOS } from "../utils/xmlCleaner";
 import JSZip from "jszip";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -48,7 +49,7 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 
 export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAdmin: () => void, onLogout: () => void }) {
   const { t, lang, setLang } = useLanguage();
   const { theme, setTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<'panel' | 'history' | 'billing' | 'preferences' | 'excel' | 'sat' | 'guide' | 'pdf' | 'concil' | 'analytics' | 'organizer'>('panel');
+  const [activeTab, setActiveTab] = useState<'panel' | 'history' | 'billing' | 'preferences' | 'excel' | 'sat' | 'guide' | 'pdf' | 'concil' | 'analytics' | 'organizer' | 'efos'>('panel');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [results, setResults] = useState<CleanResult[]>([]);
@@ -78,6 +79,9 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
 
   // Analytics Mode State
   const [analyticsData, setAnalyticsData] = useState<any | null>(null);
+
+  // EFOS State
+  const [efosResults, setEfosResults] = useState<any[] | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -782,6 +786,27 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
     }
   };
 
+  const runEfosAnalysis = async () => {
+    if (files.length === 0) return;
+    setProcessing(true);
+    try {
+      const texts = await Promise.all(files.map(f => f.text()));
+      const efosData = await analyzeEFOS(texts);
+      setEfosResults(efosData);
+      const efosCount = efosData.filter(r => r.status.includes('EFOS')).length;
+      if (efosCount > 0) {
+        setNotification({ type: 'error', message: `¡ALERTA! Se detectaron ${efosCount} RFCs en la lista de EFOS.` });
+      } else {
+        setNotification({ type: 'success', message: 'Análisis EFOS terminado. No se detectaron anomalías.' });
+      }
+    } catch (e) {
+      console.error(e);
+      setNotification({ type: 'error', message: 'Error analizando EFOS.' });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const validateSAT = async (itemsToValidate = results) => {
     if (itemsToValidate.length === 0) return;
 
@@ -903,58 +928,64 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
           <span className="font-display font-bold text-xl tracking-tight">XMLs <span className="text-brand">PRO</span></span>
         </div>
 
-        <nav className="flex-1 space-y-2">
-          <div onClick={() => { setActiveTab('panel'); setIsSidebarOpen(false); }}>
-            <SidebarItem icon={<LayoutDashboard size={20} />} label={t('dashboard')} active={activeTab === 'panel'} />
-          </div>
-          <div onClick={() => { setActiveTab('history'); setIsSidebarOpen(false); }}>
-            <SidebarItem icon={<History size={20} />} label={t('history')} active={activeTab === 'history'} />
-          </div>
-          <div onClick={() => { setActiveTab('guide'); setIsSidebarOpen(false); }}>
-            <SidebarItem icon={<BookOpen size={20} />} label="¿Para qué sirve?" active={activeTab === 'guide'} />
-          </div>
-          <div onClick={() => { setActiveTab('billing'); setIsSidebarOpen(false); }}>
-            <SidebarItem icon={<CreditCard size={20} />} label={t('billing')} active={activeTab === 'billing'} />
-          </div>
-          <div onClick={() => { setActiveTab('preferences'); setIsSidebarOpen(false); }}>
-            <SidebarItem icon={<Settings size={20} />} label={t('preferences')} active={activeTab === 'preferences'} />
+        <nav className="flex-1 space-y-6 pt-4 overflow-y-auto pr-2 custom-scrollbar">
+          <div className="space-y-2">
+            <h3 className="px-3 text-xs font-bold uppercase tracking-widest opacity-40">Core & Exploración</h3>
+            <div onClick={() => { setActiveTab('panel'); setIsSidebarOpen(false); }}>
+              <SidebarItem icon={<LayoutDashboard size={20} />} label={t('dashboard')} active={activeTab === 'panel'} />
+            </div>
+            <div onClick={() => { setActiveTab('history'); setIsSidebarOpen(false); }}>
+              <SidebarItem icon={<History size={20} />} label={t('history')} active={activeTab === 'history'} />
+            </div>
+            <div onClick={() => { setActiveTab('guide'); setIsSidebarOpen(false); }}>
+              <SidebarItem icon={<BookOpen size={20} />} label="¿Para qué sirve?" active={activeTab === 'guide'} />
+            </div>
+            <div onClick={() => { setActiveTab('billing'); setIsSidebarOpen(false); }}>
+              <SidebarItem icon={<CreditCard size={20} />} label={t('billing')} active={activeTab === 'billing'} />
+            </div>
+            <div onClick={() => { setActiveTab('preferences'); setIsSidebarOpen(false); }}>
+              <SidebarItem icon={<Settings size={20} />} label={t('preferences')} active={activeTab === 'preferences'} />
+            </div>
           </div>
           
           {/* Independent Modules - Only for Pro Unlimited */}
-          {!loadingModules && plan === "Pro Unlimited" && modules.find(m => m.name.includes('Excel'))?.is_active && (
-            <div onClick={() => { setActiveTab('excel'); setIsSidebarOpen(false); }}>
-              <SidebarItem icon={<FileCode size={20} />} label="Extraer Excel" active={activeTab === 'excel'} />
-            </div>
-          )}
-          {!loadingModules && plan === "Pro Unlimited" && modules.find(m => m.name.includes('SAT'))?.is_active && (
-            <div onClick={() => { setActiveTab('sat'); setIsSidebarOpen(false); }}>
-              <SidebarItem icon={<Globe size={20} />} label="Validador SAT" active={activeTab === 'sat'} />
-            </div>
-          )}
           {!loadingModules && plan === "Pro Unlimited" && (
-            <div onClick={() => { setActiveTab('pdf'); setIsSidebarOpen(false); }}>
-              <SidebarItem icon={<Printer size={20} />} label="Representación Impresa" active={activeTab === 'pdf'} />
-            </div>
-          )}
-          {!loadingModules && plan === "Pro Unlimited" && (
-            <div onClick={() => { setActiveTab('concil'); setIsSidebarOpen(false); }}>
-              <SidebarItem icon={<Scale size={20} />} label="Conciliación Inteligente" active={activeTab === 'concil'} />
-            </div>
-          )}
-          {!loadingModules && plan === "Pro Unlimited" && (
-            <div onClick={() => { setActiveTab('analytics'); setIsSidebarOpen(false); }}>
-              <SidebarItem icon={<BarChart3 size={20} />} label="Dashboard Financiero" active={activeTab === 'analytics'} />
-            </div>
-          )}
-          {!loadingModules && plan === "Pro Unlimited" && (
-            <div onClick={() => { setActiveTab('organizer'); setIsSidebarOpen(false); }}>
-              <SidebarItem icon={<FolderTree size={20} />} label="Auto-Filing" active={activeTab === 'organizer'} />
+            <div className="space-y-2">
+              <h3 className="px-3 text-xs font-bold uppercase tracking-widest text-brand mt-4">Pro Unlimited Suite</h3>
+              {modules.find(m => m.name.includes('Excel'))?.is_active && (
+                <div onClick={() => { setActiveTab('excel'); setIsSidebarOpen(false); }}>
+                  <SidebarItem icon={<FileCode size={20} />} label="Extraer Excel" active={activeTab === 'excel'} />
+                </div>
+              )}
+              {modules.find(m => m.name.includes('SAT'))?.is_active && (
+                <div onClick={() => { setActiveTab('sat'); setIsSidebarOpen(false); }}>
+                  <SidebarItem icon={<Globe size={20} />} label="Validador SAT" active={activeTab === 'sat'} />
+                </div>
+              )}
+              <div onClick={() => { setActiveTab('pdf'); setIsSidebarOpen(false); }}>
+                <SidebarItem icon={<Printer size={20} />} label="Representación Impresa" active={activeTab === 'pdf'} />
+              </div>
+              <div onClick={() => { setActiveTab('concil'); setIsSidebarOpen(false); }}>
+                <SidebarItem icon={<Scale size={20} />} label="Conciliación Inteligente" active={activeTab === 'concil'} />
+              </div>
+              <div onClick={() => { setActiveTab('analytics'); setIsSidebarOpen(false); }}>
+                <SidebarItem icon={<BarChart3 size={20} />} label="Dashboard Financiero" active={activeTab === 'analytics'} />
+              </div>
+              <div onClick={() => { setActiveTab('organizer'); setIsSidebarOpen(false); }}>
+                <SidebarItem icon={<FolderTree size={20} />} label="Auto-Filing" active={activeTab === 'organizer'} />
+              </div>
+              <div onClick={() => { setActiveTab('efos'); setIsSidebarOpen(false); }}>
+                <SidebarItem icon={<ShieldAlert size={20} />} label="Escáner EFOS (69-B)" active={activeTab === 'efos'} />
+              </div>
             </div>
           )}
 
           {user?.isAdmin && (
-            <div onClick={onAdmin}>
-              <SidebarItem icon={<Terminal size={20} />} label="Admin" />
+            <div className="space-y-2 mt-4">
+              <h3 className="px-3 text-xs font-bold uppercase tracking-widest opacity-40">System</h3>
+              <div onClick={onAdmin}>
+                <SidebarItem icon={<Terminal size={20} />} label="Admin" />
+              </div>
             </div>
           )}
         </nav>
@@ -1654,6 +1685,79 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                 )}
               </div>
             </div>
+          ) : activeTab === 'efos' ? (
+            <div className="lg:col-span-3 p-6 lg:p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
+              <div className="flex justify-between items-center mb-12">
+                <div>
+                  <h2 className="text-3xl font-display font-bold mb-2 text-rose-500">Escáner EFOS (Art. 69-B)</h2>
+                  <p className="text-sm opacity-60 max-w-md">Cruza tus proveedores contra la lista negra del SAT para detectar Facturadores de Operaciones Simuladas.</p>
+                </div>
+                <div className="w-16 h-16 rounded-3xl bg-rose-500/10 flex items-center justify-center text-rose-500">
+                   <ShieldAlert size={32} />
+                </div>
+              </div>
+
+              <div className="mb-10 p-6 rounded-2xl bg-rose-500/5 border border-rose-500/20 text-rose-600 dark:text-rose-400">
+                <h4 className="font-bold flex items-center gap-2 mb-2">
+                  <span className="w-6 h-6 rounded-full bg-rose-500/20 flex items-center justify-center text-xs text-rose-600 dark:text-rose-400">!</span>
+                  Aviso de Base de Datos
+                </h4>
+                <p className="text-sm opacity-80 leading-relaxed font-semibold">Esta herramienta cruzará tus XMLs contra nuestra base de EFOS Definitivos y Presuntos local (Art 69-B). Esta revisión no deja huella fiscal ni alerta al SAT directamente de tu consulta.</p>
+              </div>
+
+              <div className="space-y-4 mb-8">
+                <div {...getRootProps()} className="w-full aspect-[21/9] lg:aspect-[21/5] rounded-[1.5rem] border-2 border-dashed border-[var(--border)] bg-[var(--bg)] flex flex-col items-center justify-center p-4 cursor-pointer hover:border-rose-500/50 transition-colors">
+                  <input {...getInputProps()} />
+                  <FileCode size={24} className="text-rose-500 mb-2" />
+                  <p className="font-bold text-sm text-center">Arrastra tus XMLs de Ingresos y Egresos aquí</p>
+                  <p className="text-xs opacity-40 mt-1 text-center">{files.length > 0 ? `${files.length} cargados` : 'Auditoría inteligente masiva'}</p>
+                </div>
+                {files.length > 0 && (
+                  <button 
+                    onClick={runEfosAnalysis} disabled={processing}
+                    className="w-full py-5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-[1.5rem] font-bold shadow-xl shadow-red-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {processing ? <RefreshCw size={20} className="animate-spin" /> : <ShieldAlert size={20} />}
+                    Escanear contra Lista Negra
+                  </button>
+                )}
+              </div>
+
+              {efosResults && (
+                <div className="overflow-x-auto mt-8">
+                   <h3 className="font-bold mb-4 flex items-center gap-2"><ShieldAlert size={18} className="text-rose-500" /> Resultados del Cruce</h3>
+                   <table className="w-full text-left border-collapse">
+                     <thead>
+                       <tr className="border-b border-[var(--border)]">
+                         <th className="py-3 px-4 font-bold text-sm">Archivo</th>
+                         <th className="py-3 px-4 font-bold text-sm">RFC Emisor</th>
+                         <th className="py-3 px-4 font-bold text-sm">Monto Involucrado</th>
+                         <th className="py-3 px-4 font-bold text-sm">Estatus</th>
+                       </tr>
+                     </thead>
+                     <tbody>
+                       {efosResults.sort((a, b) => b.subtotal - a.subtotal).map((r: any, i: number) => (
+                         <tr key={i} className="border-b border-[var(--border)] hover:bg-[var(--bg)]">
+                           <td className="py-3 px-4 text-xs">{r.xmlName}</td>
+                           <td className="py-3 px-4 text-sm font-bold">
+                             <div className="flex flex-col">
+                               <span>{r.rfc}</span>
+                               <span className="text-xs opacity-50 font-normal">{r.name}</span>
+                             </div>
+                           </td>
+                           <td className="py-3 px-4 text-sm font-bold">${r.subtotal.toFixed(2)}</td>
+                           <td className="py-3 px-4 text-sm">
+                             <span className={`px-2 py-1 rounded text-xs font-bold ${r.status.includes('EFOS') ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                               {r.status}
+                             </span>
+                           </td>
+                         </tr>
+                       ))}
+                     </tbody>
+                   </table>
+                </div>
+              )}
+            </div>
           ) : activeTab === 'guide' ? (
             <div className="lg:col-span-3 space-y-8">
               <div className="p-8 lg:p-12 rounded-[2.5rem] bg-gradient-to-br from-brand to-brand/80 text-white shadow-xl relative overflow-hidden">
@@ -1790,6 +1894,15 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                       <div>
                         <h4 className="font-bold mb-1">Auto-Filing (Organizador)</h4>
                         <p className="text-xs opacity-60 leading-relaxed">Deja de lidiar con XMLs desorganizados. Este módulo los agrupa en carpetas por Año/Mes/Tipo y los renombra masivamente (ej. FACTURA_[RFC]_[FECHA].xml).</p>
+                      </div>
+                    </li>
+                    <li className="flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0">
+                        <ShieldAlert size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold mb-1">Escáner EFOS (Operaciones Simuladas)</h4>
+                        <p className="text-xs opacity-60 leading-relaxed">Cruza automáticamente todos tus XMLs contra la lista negra del artículo 69-B del SAT para detectar riesgos fiscales con EFOS.</p>
                       </div>
                     </li>
                   </ul>

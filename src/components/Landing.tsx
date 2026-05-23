@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "../hooks/useLanguage";
 import { useTheme } from "../hooks/useTheme";
-import { Sun, Moon, Sunset, Globe, CheckCircle2, ShieldCheck, Key, Mail, User, Lock, AlertCircle, Zap, FileCode, Search } from "lucide-react";
+import { Sun, Moon, Sunset, Globe, CheckCircle2, ShieldCheck, Key, Mail, User, Lock, AlertCircle, Zap, FileCode, Search, ShieldAlert, Scale, FolderTree, BarChart3 } from "lucide-react";
 import { cn } from "../utils/cn";
 import React, { useState } from "react";
 
@@ -303,13 +303,13 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
         </div>
 
         {/* Modules Section */}
-        <div className="mt-32 grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="mt-32 grid grid-cols-1 md:grid-cols-4 gap-8 mx-auto max-w-7xl">
           <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-sm">
             <div className="w-12 h-12 bg-brand/20 text-brand rounded-2xl flex items-center justify-center mb-6">
               <Zap size={24} />
             </div>
-            <h3 className="text-xl font-bold mb-2">{t('moduleCleaningTitle')}</h3>
-            <p className="text-sm opacity-60 leading-relaxed">{t('moduleCleaningDesc')}</p>
+            <h3 className="text-xl font-bold mb-2">Auditoría Master</h3>
+            <p className="text-sm opacity-60 leading-relaxed">Repara y valida la estructura, caracteres invisibles, impuestos y sellos de CFDI en lote.</p>
           </div>
           <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-sm">
             <div className="w-12 h-12 bg-emerald-500/20 text-emerald-500 rounded-2xl flex items-center justify-center mb-6">
@@ -324,6 +324,13 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
             </div>
             <h3 className="text-xl font-bold mb-2">{t('moduleSatTitle')}</h3>
             <p className="text-sm opacity-60 leading-relaxed">{t('moduleSatDesc')}</p>
+          </div>
+          <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-sm">
+            <div className="w-12 h-12 bg-rose-500/20 text-rose-500 rounded-2xl flex items-center justify-center mb-6">
+              <ShieldAlert size={24} />
+            </div>
+            <h3 className="text-xl font-bold mb-2">Escáner EFOS</h3>
+            <p className="text-sm opacity-60 leading-relaxed">Protege tu contabilidad cruzando tus XMLs directamente contra la lista del Art. 69-B del SAT.</p>
           </div>
         </div>
 
@@ -367,6 +374,36 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
               <h3 className="text-xl font-bold mb-4">Inteligencia Fiscal</h3>
               <p className="text-sm opacity-60 leading-relaxed">
                 Detección automática de discrepancias en RFC, versiones de CFDI y métodos de pago antes de procesar tus lotes.
+              </p>
+            </div>
+            
+            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
+              <div className="w-12 h-12 bg-indigo-500/10 text-indigo-500 rounded-2xl flex items-center justify-center mb-6">
+                <Scale size={24} />
+              </div>
+              <h3 className="text-xl font-bold mb-4">Conciliación Bancaria</h3>
+              <p className="text-sm opacity-60 leading-relaxed">
+                Cruza tu estado de cuenta en Excel contra cientos de XMLs para detectar las facturas que faltan por registrar o cobrar sin esfuerzo.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
+              <div className="w-12 h-12 bg-pink-500/10 text-pink-500 rounded-2xl flex items-center justify-center mb-6">
+                <FolderTree size={24} />
+              </div>
+              <h3 className="text-xl font-bold mb-4">Auto-Filing (Organizador)</h3>
+              <p className="text-sm opacity-60 leading-relaxed">
+                Olvídate de renombrar XMLs a mano. Arroja todos los archivos revueltos y recibe un ZIP ordenado por Año, Mes y Tipo con RFC.
+              </p>
+            </div>
+            
+            <div className="p-8 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] shadow-xl hover:scale-[1.02] transition-transform">
+              <div className="w-12 h-12 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center mb-6">
+                <BarChart3 size={24} />
+              </div>
+              <h3 className="text-xl font-bold mb-4">Dashboard Financiero</h3>
+              <p className="text-sm opacity-60 leading-relaxed">
+                Convierte cientos de comprobantes en gráficas instantáneas, resúmenes netos de impuestos (ISR, IVA) y Top de Clientes/Proveedores.
               </p>
             </div>
           </div>

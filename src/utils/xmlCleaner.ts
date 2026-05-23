@@ -268,6 +268,55 @@ function validateStructure(text: string, warnings: string[]): void {
   }
 }
 
+export async function analyzeEFOS(xmlContents: string[]): Promise<{ rfc: string, name: string, status: string, subtotal: number, xmlName: string }[]> {
+  // EFOS Mock Database: Emulates the Article 69-B SAT blacklist
+  // In a real application, this would be queried from an official SAT API or a synchronized database.
+  const efosList = [
+    "XAXX010101000", "XEXX010101000", "EFO123456789", "SIM987654321", "FANTASMA001"
+  ];
+  
+  const results = [];
+
+  for (let i = 0; i < xmlContents.length; i++) {
+    const text = xmlContents[i];
+    try {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(text, "text/xml");
+      
+      const getElement = (tagName: string) => {
+        const elements = xmlDoc.getElementsByTagNameNS("*", tagName);
+        return elements.length > 0 ? elements[0] : xmlDoc.getElementsByTagName(tagName)[0] || xmlDoc.getElementsByTagName(`cfdi:${tagName}`)[0];
+      };
+
+      const emisor = getElement("Emisor");
+      const comp = getElement("Comprobante");
+      
+      const rfc = emisor?.getAttribute("Rfc") || "NO_RFC";
+      const name = emisor?.getAttribute("Nombre") || "NO_NAME";
+      const subtotal = parseFloat(comp?.getAttribute("SubTotal") || "0");
+      
+      let status = "Limpio";
+      
+      if (efosList.includes(rfc)) {
+        status = "EFOS (Art. 69-B)";
+      }
+
+      results.push({
+        rfc,
+        name,
+        status,
+        subtotal,
+        xmlName: `XML_${i + 1}`
+      });
+
+    } catch(e) {
+      // parse err
+    }
+  }
+
+  return results;
+}
+
 export async function cleanXML(file: File): Promise<CleanResult> {
   const warnings: string[] = [];
   try {
