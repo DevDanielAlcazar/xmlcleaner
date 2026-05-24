@@ -143,7 +143,8 @@ async function startServer() {
     }
   });
 
-  app.use(express.json());
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   // API Routes
   app.get("/api/health", (req, res) => {
@@ -223,6 +224,48 @@ async function startServer() {
     } catch (err) {
       console.error("Error in EFOS sync:", err);
       res.status(500).json({ error: "Error al sincronizar listas negras EFOS" });
+    }
+  });
+
+  app.post("/api/admin/efos/upload", async (req, res) => {
+    const { entries } = req.body;
+    if (!entries || !Array.isArray(entries)) {
+      return res.status(400).json({ error: "Estructura de payload inválida" });
+    }
+
+    try {
+      const CHUNK_SIZE = 5000;
+      let totalInserted = 0;
+
+      for (let i = 0; i < entries.length; i += CHUNK_SIZE) {
+        const chunk = entries.slice(i, i + CHUNK_SIZE);
+        const values: any[] = [];
+        const placeholders = chunk.map((entry: any, index: number) => {
+          const offset = index * 4;
+          values.push(entry.rfc, entry.name, entry.status, entry.date);
+          return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, NOW())`;
+        }).join(", ");
+
+        const query = `
+          INSERT INTO efos_blacklist (rfc, name, status, published_date, updated_at)
+          VALUES ${placeholders}
+          ON CONFLICT (rfc) DO UPDATE 
+          SET name = EXCLUDED.name, status = EXCLUDED.status, published_date = EXCLUDED.published_date, updated_at = NOW()
+        `;
+
+        await pool.query(query, values);
+        totalInserted += chunk.length;
+      }
+
+      res.json({ 
+        success: true, 
+        message: "Archivo procesado y base de datos actualizada exitosamente.", 
+        count: totalInserted,
+        timestamp: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error("Error in EFOS CSV upload:", err);
+      res.status(500).json({ error: "Error al cargar la lista EFOS." });
     }
   });
 

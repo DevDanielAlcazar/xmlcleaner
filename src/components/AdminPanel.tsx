@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "../hooks/useLanguage";
 import { useTheme } from "../hooks/useTheme";
@@ -49,6 +49,98 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
   const [efosSyncMessage, setEfosSyncMessage] = useState("");
   const [efosDbCount, setEfosDbCount] = useState<number>(8);
   const [efosLastSync, setEfosLastSync] = useState<string>("2026-05-23 05:00");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setEfosSyncing(true);
+    setEfosSyncMessage("");
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const data = evt.target?.result;
+        if (!data) throw new Error("Archivo vacío o ilegible.");
+        
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows: any[] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        
+        const entries = [];
+        let rfcCol = -1, nameCol = -1, statusCol = -1;
+        let headerRowIdx = -1;
+
+        for (let i = 0; i < Math.min(20, rows.length); i++) {
+           const row = rows[i];
+           if (Array.isArray(row)) {
+               for (let j = 0; j < row.length; j++) {
+                   const cell = String(row[j] || "").toLowerCase();
+                   if (cell.includes("rfc") && rfcCol === -1) rfcCol = j;
+                   if ((cell.includes("nombre") || cell.includes("razón social") || cell.includes("denominación")) && nameCol === -1) nameCol = j;
+                   if ((cell.includes("situación") || cell.includes("situacion") || cell.includes("supuesto")) && statusCol === -1) statusCol = j;
+               }
+               if (rfcCol !== -1) {
+                   headerRowIdx = i;
+                   break;
+               }
+           }
+        }
+        
+        if (headerRowIdx === -1) {
+            rfcCol = 1; nameCol = 2; statusCol = 3; 
+            headerRowIdx = 0; 
+        }
+
+        for (let i = headerRowIdx + 1; i < rows.length; i++) {
+           const row = rows[i];
+           if (Array.isArray(row) && row[rfcCol]) {
+               const rawRfc = String(row[rfcCol]).trim().toUpperCase();
+               if (rawRfc.length >= 10 && rawRfc.length <= 13) {
+                 entries.push({
+                     rfc: rawRfc,
+                     name: row[nameCol] ? String(row[nameCol]).trim() : "SIN NOMBRE",
+                     status: row[statusCol] ? String(row[statusCol]).trim() : "Definitivo",
+                     date: new Date().toISOString().split('T')[0]
+                 });
+               }
+           }
+        }
+        
+        if (entries.length === 0) {
+            throw new Error("No se encontraron registros válidos o columnas RFC en el archivo.");
+        }
+
+        const res = await fetch("/api/admin/efos/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ entries })
+        });
+        const resData = await res.json();
+        
+        if (res.ok) {
+            setEfosSyncMessage(`¡Se cargaron ${resData.count} registros exitosamente desde el archivo!`);
+            setEfosLastSync(new Date().toISOString().replace('T', ' ').substring(0, 16));
+            fetch("/api/admin/metrics")
+                .then(r => r.json())
+                .then(m => {
+                    setMetrics(m);
+                    if (m.efosCount !== undefined) setEfosDbCount(m.efosCount);
+                });
+        } else {
+            setEfosSyncMessage(`Error: ${resData.error}`);
+        }
+      } catch (err: any) {
+          console.error(err);
+          setEfosSyncMessage(`Error procesando archivo: ${err.message}`);
+      } finally {
+          setEfosSyncing(false);
+          if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
 
   const handleSyncEfosList = async () => {
     setEfosSyncing(true);
@@ -438,16 +530,37 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
                 </div>
                 
                 <div className="shrink-0 flex flex-col gap-2">
+                  <div className="relative overflow-hidden">
+                    <input 
+                       type="file" 
+                       accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                       onChange={handleFileUpload}
+                       disabled={efosSyncing}
+                       ref={fileInputRef}
+                    />
+                    <button 
+                      type="button"
+                      disabled={efosSyncing}
+                      className={cn(
+                        "w-full flex items-center justify-center gap-2 px-6 py-3 bg-[var(--bg)] border border-rose-500/30 hover:bg-rose-500/10 text-rose-500 text-xs font-bold rounded-xl transition-all",
+                        efosSyncing && "opacity-75 cursor-not-allowed"
+                      )}
+                    >
+                      <Download size={14} className="rotate-180" />
+                      Cargar Archivo CSV
+                    </button>
+                  </div>
                   <button 
                     onClick={handleSyncEfosList}
                     disabled={efosSyncing}
                     className={cn(
-                      "flex items-center gap-2 px-6 py-3 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-rose-500/25",
+                      "flex items-center justify-center gap-2 px-6 py-3 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-rose-500/25",
                       efosSyncing && "opacity-75 cursor-not-allowed"
                     )}
                   >
                     <RefreshCw size={14} className={cn(efosSyncing && "animate-spin")} />
-                    {efosSyncing ? "Sincronizando..." : "Sincronizar Lista SAT de Inmediato"}
+                    {efosSyncing ? "Procesando..." : "Sincronizar Lista SAT"}
                   </button>
                 </div>
               </div>
