@@ -78,8 +78,8 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
                for (let j = 0; j < row.length; j++) {
                    const cell = String(row[j] || "").toLowerCase();
                    if (cell.includes("rfc") && rfcCol === -1) rfcCol = j;
-                   if ((cell.includes("nombre") || cell.includes("razón social") || cell.includes("denominación")) && nameCol === -1) nameCol = j;
-                   if ((cell.includes("situación") || cell.includes("situacion") || cell.includes("supuesto")) && statusCol === -1) statusCol = j;
+                   if ((cell.includes("nombre") || cell.includes("razón") || cell.includes("razon") || cell.includes("denominaci")) && nameCol === -1) nameCol = j;
+                   if ((cell.includes("situaci") || cell.includes("supuesto") || cell.includes("estado")) && statusCol === -1) statusCol = j;
                }
                if (rfcCol !== -1) {
                    headerRowIdx = i;
@@ -97,11 +97,11 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
            const row = rows[i];
            if (Array.isArray(row) && row[rfcCol]) {
                const rawRfc = String(row[rfcCol]).trim().toUpperCase();
-               if (rawRfc.length >= 10 && rawRfc.length <= 13) {
+               if (rawRfc.length >= 10 && rawRfc.length <= 13 && !rawRfc.includes("XXX")) {
                  entries.push({
                      rfc: rawRfc,
-                     name: row[nameCol] ? String(row[nameCol]).trim() : "SIN NOMBRE",
-                     status: row[statusCol] ? String(row[statusCol]).trim() : "Definitivo",
+                     name: (row[nameCol] ? String(row[nameCol]).trim() : "SIN NOMBRE").substring(0, 250),
+                     status: (row[statusCol] ? String(row[statusCol]).trim() : "Definitivo").substring(0, 50),
                      date: new Date().toISOString().split('T')[0]
                  });
                }
