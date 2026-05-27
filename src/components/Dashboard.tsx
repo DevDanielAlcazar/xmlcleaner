@@ -839,14 +839,63 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
   const runRepAudit = async () => {
     if (files.length === 0) return;
     setProcessing(true);
-    setTimeout(() => {
-      setRepResults([
-        { file: "Factura_PPD_1.xml", status: "Sin REP" },
-        { file: "Factura_PPD_2.xml", status: "REP Encontrado" },
-      ]);
+    try {
+      const ppds: { file: string, uuid: string }[] = [];
+      const repUuids = new Set<string>();
+
+      for (const file of files) {
+        const text = await file.text();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(text, "text/xml");
+        
+        const getElement = (tagName: string) => {
+          const elements = xmlDoc.getElementsByTagNameNS("*", tagName);
+          return elements.length > 0 ? elements[0] : (xmlDoc.getElementsByTagName(tagName)[0] || xmlDoc.getElementsByTagName(`cfdi:${tagName}`)[0] || xmlDoc.getElementsByTagNameNS("http://www.sat.gob.mx/cfd/3", tagName)[0] || xmlDoc.getElementsByTagNameNS("http://www.sat.gob.mx/cfd/4", tagName)[0]);
+        };
+
+        const comprobante = getElement("Comprobante");
+        const timbre = getElement("TimbreFiscalDigital");
+        
+        if (!comprobante || !timbre) continue;
+
+        const tipoDeComprobante = comprobante.getAttribute("TipoDeComprobante");
+        const metodoPago = comprobante.getAttribute("MetodoPago");
+        const uuid = timbre.getAttribute("UUID");
+
+        if (!uuid) continue;
+
+        if (metodoPago === "PPD") {
+          ppds.push({ file: file.name, uuid: uuid.toUpperCase() });
+        } else if (tipoDeComprobante === "P") {
+          // Parse all DoctoRelacionado to find paid UUIDs
+          let doctosRelacionados = Array.from(xmlDoc.getElementsByTagNameNS("*", "DoctoRelacionado"));
+          if (doctosRelacionados.length === 0) {
+            doctosRelacionados = [
+              ...Array.from(xmlDoc.getElementsByTagName("pago20:DoctoRelacionado")),
+              ...Array.from(xmlDoc.getElementsByTagName("pago10:DoctoRelacionado"))
+            ];
+          }
+          
+          doctosRelacionados.forEach(docNode => {
+            const idDoc = docNode.getAttribute("IdDocumento");
+            if (idDoc) repUuids.add(idDoc.toUpperCase());
+          });
+        }
+      }
+
+      const results = ppds.map(ppd => ({
+        file: ppd.file,
+        status: repUuids.has(ppd.uuid) ? "REP Encontrado" : "Sin REP"
+      }));
+
+      setRepResults(results);
+      setNotification({ type: 'success', message: `Auditoría completada: Se analizaron ${ppds.length} PPDs.` });
+    } catch (e) {
+      console.error(e);
+      setNotification({ type: 'error', message: 'Error procesando los XMLs para la auditoría PPD vs REP.' });
+    } finally {
       setProcessing(false);
-      setNotification({ type: 'success', message: 'Auditoría PPD vs REP completada.' });
-    }, 1500);
+    }
   };
 
   const runExtractSAT = async () => {

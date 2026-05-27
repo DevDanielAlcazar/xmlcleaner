@@ -72,13 +72,13 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
         let rfcCol = -1, nameCol = -1, statusCol = -1;
         let headerRowIdx = -1;
 
-        for (let i = 0; i < Math.min(20, rows.length); i++) {
+        for (let i = 0; i < Math.min(50, rows.length); i++) {
            const row = rows[i];
            if (Array.isArray(row)) {
                for (let j = 0; j < row.length; j++) {
-                   const cell = String(row[j] || "").toLowerCase();
+                   const cell = String(row[j] || "").toLowerCase().trim();
                    if (cell.includes("rfc") && rfcCol === -1) rfcCol = j;
-                   if ((cell.includes("nombre") || cell.includes("razón") || cell.includes("razon") || cell.includes("denominaci")) && nameCol === -1) nameCol = j;
+                   if ((cell.includes("nombre") || cell.includes("razón") || cell.includes("razon") || cell.includes("denominaci") || cell.includes("contribuyente")) && nameCol === -1) nameCol = j;
                    if ((cell.includes("situaci") || cell.includes("supuesto") || cell.includes("estado")) && statusCol === -1) statusCol = j;
                }
                if (rfcCol !== -1) {
@@ -97,7 +97,11 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
            const row = rows[i];
            if (Array.isArray(row) && row[rfcCol]) {
                const rawRfc = String(row[rfcCol]).trim().toUpperCase();
-               if (rawRfc.length >= 10 && rawRfc.length <= 13 && !rawRfc.includes("XXX")) {
+               
+               // Ignorar registros suprimidos o que contienen "xxxxxxx"
+               if (rawRfc.match(/X{3,}/i)) continue;
+
+               if (rawRfc.length >= 10 && rawRfc.length <= 13) {
                  entries.push({
                      rfc: rawRfc,
                      name: (row[nameCol] ? String(row[nameCol]).trim() : "SIN NOMBRE").substring(0, 250),
