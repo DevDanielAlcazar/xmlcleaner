@@ -85,9 +85,10 @@ GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO xml_cleaner_user;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO xml_cleaner_user;
 
 -- 3. Actualizar Base de Datos Existente (Si ya habías corrido la migración antes)
--- Si recibes el error "no existe la columna is_admin", corre esto:
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(100);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason TEXT;
 
 -- 4. Crear Administrador Inicial
 -- Una vez que te hayas registrado en la web, corre este comando:

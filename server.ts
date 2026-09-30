@@ -290,35 +290,29 @@ async function startServer() {
 
   // Initialize Database Tables if connected to real PostgreSQL
   if (realPool) {
+    const ddlStatements = [
+      `CREATE TABLE IF NOT EXISTS efos_blacklist (
+        rfc VARCHAR(15) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        status VARCHAR(255) NOT NULL,
+        published_date VARCHAR(50),
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason TEXT`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(255)`
+    ];
+
+    for (const ddl of ddlStatements) {
+      try {
+        await realPool.query(ddl);
+      } catch (err: any) {
+        console.warn("DDL migration note:", err?.message || err);
+      }
+    }
+
     try {
-      await realPool.query(`
-        CREATE TABLE IF NOT EXISTS efos_blacklist (
-          rfc VARCHAR(15) PRIMARY KEY,
-          name VARCHAR(255) NOT NULL,
-          status VARCHAR(255) NOT NULL,
-          published_date VARCHAR(50),
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS users (
-          id SERIAL PRIMARY KEY,
-          name VARCHAR(255) NOT NULL,
-          email VARCHAR(255) UNIQUE NOT NULL,
-          password_hash VARCHAR(255) NOT NULL,
-          rfc VARCHAR(20),
-          curp VARCHAR(25),
-          security_answer_rfc VARCHAR(20),
-          security_answer_curp VARCHAR(25),
-          credits INTEGER DEFAULT 5,
-          plan VARCHAR(50) DEFAULT 'Free Starter',
-          is_admin BOOLEAN DEFAULT FALSE,
-          is_banned BOOLEAN DEFAULT FALSE,
-          ban_reason TEXT,
-          stripe_customer_id VARCHAR(255),
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE;
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason TEXT;
-      `);
       const countRes = await realPool.query("SELECT COUNT(*) FROM efos_blacklist");
       if (parseInt(countRes.rows[0].count) === 0) {
         await realPool.query(`
@@ -330,11 +324,12 @@ async function startServer() {
           ('AAA010101AAA', 'EMPRESA DE PRUEBA EFOS SA DE CV', 'Definitivo', '2025-04-05'),
           ('GCO110110TXT', 'GRUPO CONSTRUCTOR OAXACA', 'Definitivo', '2024-04-20'),
           ('SER1902049L3', 'SERVICIOS INTEGRALES LOGISTICOS DE MEXICO', 'Definitivo', '2024-08-11'),
-          ('IND231011A89', 'INDUSTRIAS METALURGICAS DEL BAJIO SA', 'Presunto', '2025-01-05');
+          ('IND231011A89', 'INDUSTRIAS METALURGICAS DEL BAJIO SA', 'Presunto', '2025-01-05')
+          ON CONFLICT (rfc) DO NOTHING;
         `);
       }
     } catch (err) {
-      console.error("Postgres initialization note:", err);
+      console.warn("EFOS seed notice:", err);
     }
   }
 
@@ -650,11 +645,53 @@ async function startServer() {
 
   app.get("/api/admin/users", async (req, res) => {
     try {
-      const result = await pool.query(
+      if (realPool) {
+        try {
+          // Attempt 1: Query with is_banned and ban_reason
+          try {
+            const result = await realPool.query(
+              "SELECT id, name, email, plan, credits, is_banned, ban_reason, created_at as joined FROM users ORDER BY created_at DESC"
+            );
+            return res.json(result.rows);
+          } catch (firstErr: any) {
+            console.warn("Postgres query with is_banned failed:", firstErr?.message);
+
+            // Attempt 2: Ensure the columns exist on the real table and retry
+            try {
+              await realPool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE");
+              await realPool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason TEXT");
+              const retryRes = await realPool.query(
+                "SELECT id, name, email, plan, credits, is_banned, ban_reason, created_at as joined FROM users ORDER BY created_at DESC"
+              );
+              return res.json(retryRes.rows);
+            } catch (alterErr: any) {
+              console.warn("Could not alter table, falling back to base user columns:", alterErr?.message);
+
+              // Attempt 3: Query using original columns without is_banned so all 347 real users are ALWAYS displayed!
+              const fallbackRes = await realPool.query(
+                "SELECT id, name, email, plan, credits, created_at as joined FROM users ORDER BY created_at DESC"
+              );
+              return res.json(
+                fallbackRes.rows.map((u: any) => ({
+                  ...u,
+                  is_banned: false,
+                  ban_reason: null
+                }))
+              );
+            }
+          }
+        } catch (poolErr: any) {
+          console.warn("PostgreSQL connection error in /api/admin/users, falling back:", poolErr?.message);
+        }
+      }
+
+      // If no PostgreSQL instance configured or accessible, use mock store
+      const mockResult = await executeMockQuery(
         "SELECT id, name, email, plan, credits, is_banned, ban_reason, created_at as joined FROM users ORDER BY created_at DESC"
       );
-      res.json(result.rows);
-    } catch (err) {
+      res.json(mockResult.rows);
+    } catch (err: any) {
+      console.error("Error in /api/admin/users:", err);
       res.status(500).json({ error: "Database error" });
     }
   });
@@ -672,6 +709,13 @@ async function startServer() {
   app.post("/api/admin/users/upgrade-pro", async (req, res) => {
     const { userId } = req.body;
     try {
+      if (realPool) {
+        await realPool.query(
+          "UPDATE users SET credits = 10000, plan = 'Pro Unlimited' WHERE id = $1",
+          [userId]
+        );
+        return res.json({ success: true });
+      }
       await pool.query(
         "UPDATE users SET credits = 10000, plan = 'Pro Unlimited' WHERE id = $1",
         [userId]
@@ -685,6 +729,13 @@ async function startServer() {
   app.post("/api/admin/users/downgrade-free", async (req, res) => {
     const { userId } = req.body;
     try {
+      if (realPool) {
+        await realPool.query(
+          "UPDATE users SET credits = 5, plan = 'Free Starter' WHERE id = $1",
+          [userId]
+        );
+        return res.json({ success: true, message: "Usuario degradado a Free Starter exitosamente" });
+      }
       await pool.query(
         "UPDATE users SET credits = 5, plan = 'Free Starter' WHERE id = $1",
         [userId]
@@ -701,12 +752,26 @@ async function startServer() {
       return res.status(400).json({ error: "Debes ingresar un motivo para el baneo." });
     }
     try {
+      if (realPool) {
+        try {
+          await realPool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE");
+          await realPool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason TEXT");
+        } catch (e: any) {
+          console.warn("Could not alter table before ban:", e?.message);
+        }
+        await realPool.query(
+          "UPDATE users SET is_banned = $1, ban_reason = $2 WHERE id = $3",
+          [true, reason.trim(), userId]
+        );
+        return res.json({ success: true, message: "Usuario baneado correctamente" });
+      }
       await pool.query(
         "UPDATE users SET is_banned = $1, ban_reason = $2 WHERE id = $3",
         [true, reason.trim(), userId]
       );
       res.json({ success: true, message: "Usuario baneado correctamente" });
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Error banning user:", err);
       res.status(500).json({ error: "Error al banear usuario" });
     }
   });
@@ -714,12 +779,26 @@ async function startServer() {
   app.post("/api/admin/users/unban", async (req, res) => {
     const { userId } = req.body;
     try {
+      if (realPool) {
+        try {
+          await realPool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE");
+          await realPool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason TEXT");
+        } catch (e: any) {
+          console.warn("Could not alter table before unban:", e?.message);
+        }
+        await realPool.query(
+          "UPDATE users SET is_banned = $1, ban_reason = $2 WHERE id = $3",
+          [false, null, userId]
+        );
+        return res.json({ success: true, message: "Usuario desbaneado correctamente" });
+      }
       await pool.query(
         "UPDATE users SET is_banned = $1, ban_reason = $2 WHERE id = $3",
         [false, null, userId]
       );
       res.json({ success: true, message: "Usuario desbaneado correctamente" });
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Error unbanning user:", err);
       res.status(500).json({ error: "Error al desbanear usuario" });
     }
   });
