@@ -4,6 +4,9 @@ import { useTheme } from "../hooks/useTheme";
 import { Sun, Moon, Sunset, Globe, CheckCircle2, ShieldCheck, Key, Mail, User, Lock, AlertCircle, Zap, FileCode, Search, ShieldAlert, Scale, FolderTree, BarChart3, Calculator, DownloadCloud, Briefcase, Printer, FileText } from "lucide-react";
 import { cn } from "../utils/cn";
 import React, { useState } from "react";
+import xmlsLogo from "../assets/XMLslogo.png";
+import consafedevShield from "../assets/consafedev-shield.png";
+import consafedevLetters from "../assets/consafedev-letters-clean.png";
 
 export default function Landing({ 
   onStart, 
@@ -114,8 +117,8 @@ export default function Landing({
 
       {/* Navbar */}
       <nav className="max-w-7xl mx-auto px-6 py-8 flex items-center justify-between relative z-10">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center text-white font-bold">X</div>
+        <div className="flex items-center gap-2.5">
+          <img src={xmlsLogo} alt="XMLs PRO Logo" className="w-8 h-8 object-contain rounded-lg shadow-sm" />
           <span className="font-display font-bold text-xl tracking-tight">XMLs <span className="text-brand">PRO</span></span>
         </div>
         
@@ -596,14 +599,48 @@ export default function Landing({
 
       <footer className="border-t border-[var(--border)] py-20">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12">
-          <div className="col-span-2">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-6 h-6 bg-brand rounded flex items-center justify-center text-white text-xs font-bold">X</div>
-              <span className="font-display font-bold text-lg tracking-tight">XMLs PRO</span>
+          <div className="col-span-2 space-y-6">
+            <div>
+              <div className="flex items-center gap-2.5 mb-4">
+                <img src={xmlsLogo} alt="XMLs PRO Logo" className="w-7 h-7 object-contain rounded-md shadow-sm" />
+                <span className="font-display font-bold text-lg tracking-tight">XMLs PRO</span>
+              </div>
+              <p className="opacity-50 max-w-sm text-sm leading-relaxed">
+                {t('footerDesc')}
+              </p>
             </div>
-            <p className="opacity-50 max-w-sm text-sm leading-relaxed">
-              {t('footerDesc')}
-            </p>
+
+            {/* ConSafeDev brand & official site link */}
+            <div className="pt-4 border-t border-[var(--border)]/50 max-w-sm">
+              <span className="text-[10px] font-semibold tracking-wider uppercase opacity-40 block mb-2">
+                Desarrollado y respaldado por
+              </span>
+              <a
+                href="https://consafedev.qzz.io/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center gap-3 px-3 py-2 -ml-3 rounded-2xl bg-[var(--card)]/60 hover:bg-[var(--card)] border border-[var(--border)]/70 hover:border-brand/40 shadow-xs hover:shadow-md transition-all duration-300"
+                title="ConSafeDev - ¡Visita nuestra web oficial!"
+              >
+                <img
+                  src={consafedevShield}
+                  alt="ConSafeDev Escudo"
+                  className="w-8 h-8 object-contain shrink-0 group-hover:scale-105 transition-transform drop-shadow-sm"
+                />
+                <div className="flex flex-col justify-center">
+                  <div className="flex items-center bg-white/90 dark:bg-white/95 px-2 py-0.5 rounded-md shadow-xs border border-black/5 w-fit">
+                    <img
+                      src={consafedevLetters}
+                      alt="ConSafeDev"
+                      className="h-4 sm:h-[18px] w-auto object-contain"
+                    />
+                  </div>
+                  <span className="text-[11px] text-brand font-semibold group-hover:underline flex items-center gap-1 mt-1">
+                    ¡Visita nuestra web oficial! →
+                  </span>
+                </div>
+              </a>
+            </div>
           </div>
           <div>
             <h4 className="font-bold text-sm mb-6 uppercase tracking-widest opacity-30">Producto</h4>

@@ -48,6 +48,7 @@ import autoTable from "jspdf-autotable";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 import { loadStripe } from "@stripe/stripe-js";
+import xmlsLogo from "../assets/XMLslogo.png";
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "");
 
@@ -1194,8 +1195,8 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
     <div className="flex min-h-screen bg-[var(--bg)] relative">
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[var(--card)] border-b border-[var(--border)] z-40 flex items-center justify-between px-6">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center text-white font-bold">X</div>
+        <div className="flex items-center gap-2.5">
+          <img src={xmlsLogo} alt="XMLs PRO Logo" className="w-8 h-8 object-contain rounded-lg shadow-sm" />
           <span className="font-display font-bold text-lg tracking-tight">XMLs <span className="text-brand">PRO</span></span>
         </div>
         <button 
@@ -1224,8 +1225,8 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
         "fixed lg:static inset-y-0 left-0 w-72 border-r border-[var(--border)] flex flex-col p-6 gap-8 bg-[var(--bg)] z-50 transition-transform lg:translate-x-0",
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center text-white font-bold">X</div>
+        <div className="flex items-center gap-2.5 mb-4">
+          <img src={xmlsLogo} alt="XMLs PRO Logo" className="w-8 h-8 object-contain rounded-lg shadow-sm" />
           <span className="font-display font-bold text-xl tracking-tight">XMLs <span className="text-brand">PRO</span></span>
         </div>
 

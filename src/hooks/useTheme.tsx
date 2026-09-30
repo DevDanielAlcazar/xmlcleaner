@@ -18,8 +18,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem('app-theme', theme);
     const root = window.document.documentElement;
-    root.classList.remove('day', 'afternoon', 'night');
+    root.classList.remove('day', 'afternoon', 'night', 'dark');
     root.classList.add(theme);
+    if (theme === 'night') {
+      root.classList.add('dark');
+    }
     
     // Update meta theme-color for mobile
     const colors = {
