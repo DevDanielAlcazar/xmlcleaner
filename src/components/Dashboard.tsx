@@ -1298,25 +1298,43 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
         </nav>
 
         <div className="space-y-6">
-          <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)]">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs font-bold opacity-40 uppercase tracking-widest">{t('credits')}</span>
-              <span className="text-sm font-bold">{credits}/{plan === 'Pro Unlimited' ? '10k' : '5'}</span>
+          {plan === 'Pro Unlimited' ? (
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/15 via-brand/10 to-brand/5 border border-emerald-500/30 shadow-sm relative overflow-hidden">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  Plan Pro Unlimited Activo
+                </span>
+              </div>
+              <p className="text-xs font-bold text-[var(--text)] leading-snug">
+                ¡Disfruta de créditos ilimitados en tu plan Pro Unlimited!
+              </p>
+              <div className="mt-2.5 pt-2 border-t border-[var(--border)]/40 flex items-center justify-between text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                <span>Capacidad Total</span>
+                <span>∞ Ilimitado</span>
+              </div>
             </div>
-            <div className="h-2 bg-[var(--bg)] rounded-full overflow-hidden mb-4">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${(credits / (plan === 'Pro Unlimited' ? 10000 : 5)) * 100}%` }}
-                className="h-full bg-emerald-500"
-              />
+          ) : (
+            <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)]">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-bold opacity-40 uppercase tracking-widest">{t('credits')}</span>
+                <span className="text-sm font-bold">{credits}/5</span>
+              </div>
+              <div className="h-2 bg-[var(--bg)] rounded-full overflow-hidden mb-4">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(credits / 5) * 100}%` }}
+                  className="h-full bg-emerald-500"
+                />
+              </div>
+              <button 
+                onClick={() => setActiveTab('billing')}
+                className="w-full py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs font-bold hover:bg-[var(--bg)]/80 transition-colors"
+              >
+                {t('expand')}
+              </button>
             </div>
-            <button 
-              onClick={() => setActiveTab('billing')}
-              className="w-full py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs font-bold hover:bg-[var(--bg)]/80 transition-colors"
-            >
-              {t('expand')}
-            </button>
-          </div>
+          )}
 
           <div 
             onClick={onLogout}
@@ -2272,7 +2290,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                       <li className="flex gap-3">
                         <Zap size={18} className="text-brand shrink-0 mt-0.5" />
                         <div>
-                          <strong className="block font-semibold text-brand font-bold">Créditos Lote Ilimitados (10k al mes):</strong>
+                          <strong className="block font-semibold text-brand font-bold">Créditos Lote Ilimitados:</strong>
                           <span className="opacity-70 text-xs">Procesa y repara miles de CFDI de manera instantánea y simultánea sin bloqueos de límite.</span>
                         </div>
                       </li>
@@ -2375,7 +2393,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                     <span className="text-2xl font-display font-bold">$29<span className="text-sm opacity-50">/mes</span></span>
                   </div>
                   <ul className="space-y-3 mb-8 flex-1">
-                    <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Créditos ilimitados (10,000)</li>
+                    <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Créditos ilimitados</li>
                     <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Reparación Total</li>
                     <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Alertas Inteligentes</li>
                     <li className="text-sm flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Soporte prioritario</li>

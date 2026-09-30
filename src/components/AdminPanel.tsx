@@ -282,7 +282,7 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
   };
 
   const handleUpgradePro = async (userId: string | number) => {
-    if (!window.confirm("¿Estás seguro de elevar este usuario a PRO? Esto le dará 10,000 créditos y el plan Pro Unlimited.")) return;
+    if (!window.confirm("¿Estás seguro de elevar este usuario a PRO? Esto le dará créditos ilimitados y el plan Pro Unlimited.")) return;
     try {
       const res = await fetch("/api/admin/users/upgrade-pro", {
         method: "POST",

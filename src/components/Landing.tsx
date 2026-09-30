@@ -561,7 +561,7 @@ export default function Landing({
                 <h3 className="text-xl font-bold mb-2">Pro Mensual</h3>
                 <div className="text-4xl font-display font-bold mb-6">$29 <span className="text-sm opacity-40 font-sans">MXN / mes</span></div>
                 <ul className="space-y-4 mb-10 flex-grow text-sm">
-                  <li className="flex gap-3 font-medium opacity-80"><Zap size={16} className="text-brand shrink-0 mt-0.5" /> Lote Ilimitado (10,000 créditos al mes)</li>
+                  <li className="flex gap-3 font-medium opacity-80"><Zap size={16} className="text-brand shrink-0 mt-0.5" /> Lote Ilimitado</li>
                   <li className="flex gap-3 font-medium opacity-80"><Zap size={16} className="text-brand shrink-0 mt-0.5" /> Módulo de Extracción a Excel</li>
                   <li className="flex gap-3 font-medium opacity-80"><Zap size={16} className="text-brand shrink-0 mt-0.5" /> Módulo Validador del SAT</li>
                   <li className="flex gap-3 font-medium opacity-80"><Zap size={16} className="text-brand shrink-0 mt-0.5" /> Escáner en vivo de EFOS (69-B)</li>
