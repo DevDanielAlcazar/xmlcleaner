@@ -9,6 +9,7 @@ import { LanguageProvider } from './hooks/useLanguage';
 import Landing from './components/Landing';
 import Dashboard from './components/Dashboard';
 import AdminPanel from './components/AdminPanel';
+import SupportChat from './components/SupportChat';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -176,6 +177,7 @@ export default function App() {
               onBack={() => setView('dashboard')} 
             />
           )}
+          <SupportChat />
         </LanguageProvider>
       </ThemeProvider>
     </ErrorBoundary>
