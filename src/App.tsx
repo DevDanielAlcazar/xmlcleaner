@@ -131,7 +131,10 @@ export default function App() {
     }
   });
 
+  const [bannedNotice, setBannedNotice] = useState<{ isBanned: boolean; reason: string } | null>(null);
+
   const handleStart = (userData: any) => {
+    setBannedNotice(null);
     setUser(userData);
     if (userData) {
       try {
@@ -141,11 +144,17 @@ export default function App() {
     setView('dashboard');
   };
 
-  const handleLogout = () => {
+  const handleLogout = (banData?: { banned?: boolean; reason?: string }) => {
     try {
       safeStorage.remove('xml_user_session');
     } catch {}
     setUser(null);
+    if (banData?.banned) {
+      setBannedNotice({
+        isBanned: true,
+        reason: banData.reason || 'Tu cuenta ha sido restringida por administración.'
+      });
+    }
     setView('landing');
   };
 
@@ -154,7 +163,7 @@ export default function App() {
       <ThemeProvider>
         <LanguageProvider>
           {view === 'landing' ? (
-            <Landing onStart={handleStart} />
+            <Landing onStart={handleStart} initialBannedNotice={bannedNotice} />
           ) : view === 'dashboard' ? (
             <Dashboard 
               user={user}

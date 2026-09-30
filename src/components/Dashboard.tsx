@@ -51,7 +51,7 @@ import { loadStripe } from "@stripe/stripe-js";
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "");
 
-export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAdmin: () => void, onLogout: () => void }) {
+export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAdmin: () => void, onLogout: (banData?: any) => void }) {
   const { t, lang, setLang } = useLanguage();
   const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<'panel' | 'history' | 'billing' | 'preferences' | 'excel' | 'sat' | 'guide' | 'pdf' | 'concil' | 'analytics' | 'organizer' | 'efos' | 'rep' | 'extract' | 'vault' | 'invoice'>('panel');
@@ -128,6 +128,10 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
       fetch(`/api/user/credits?userId=${user.id}`)
         .then(res => res.json())
         .then(data => {
+          if (data.is_banned) {
+            onLogout({ banned: true, reason: data.ban_reason });
+            return;
+          }
           setCredits(data.credits);
           setPlan(data.plan);
         });

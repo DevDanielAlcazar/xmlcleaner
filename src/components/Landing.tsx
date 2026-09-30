@@ -5,7 +5,13 @@ import { Sun, Moon, Sunset, Globe, CheckCircle2, ShieldCheck, Key, Mail, User, L
 import { cn } from "../utils/cn";
 import React, { useState } from "react";
 
-export default function Landing({ onStart }: { onStart: (user?: any) => void }) {
+export default function Landing({ 
+  onStart, 
+  initialBannedNotice 
+}: { 
+  onStart: (user?: any) => void, 
+  initialBannedNotice?: { isBanned: boolean; reason: string } | null 
+}) {
   const { t, lang, setLang } = useLanguage();
   const { theme, setTheme } = useTheme();
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'recover' | null>(null);
@@ -19,6 +25,14 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
   const [curp, setCurp] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const [bannedNotice, setBannedNotice] = useState<{ isBanned: boolean; reason: string } | null>(initialBannedNotice || null);
+
+  React.useEffect(() => {
+    if (initialBannedNotice?.isBanned) {
+      setBannedNotice(initialBannedNotice);
+      setAuthMode('login');
+    }
+  }, [initialBannedNotice]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +59,18 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
           body: JSON.stringify({ email, password })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Credenciales inválidas');
+        if (!res.ok) {
+          if (data.isBanned) {
+            setBannedNotice({
+              isBanned: true,
+              reason: data.banReason || 'Tu cuenta ha sido suspendida.'
+            });
+            setError('');
+            return;
+          }
+          throw new Error(data.error || 'Credenciales inválidas');
+        }
+        setBannedNotice(null);
         onStart(data.user);
       } else if (authMode === 'recover') {
         const res = await fetch('/api/auth/recover', {
@@ -67,6 +92,26 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
     <div className={cn("min-h-screen relative overflow-hidden", 
       theme === 'day' ? 'day-gradient' : theme === 'afternoon' ? 'afternoon-gradient' : 'night-gradient'
     )}>
+      {/* Top Banned Alert Banner (Sticky) */}
+      {bannedNotice && (
+        <div className="bg-rose-600 text-white px-6 py-3.5 sticky top-0 z-50 shadow-lg border-b border-rose-700/50 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <ShieldAlert size={22} className="shrink-0 text-white animate-pulse" />
+            <div className="text-xs">
+              <span className="font-bold mr-2 uppercase tracking-wide bg-rose-700 px-2 py-0.5 rounded">Cuenta Suspendida / Baneada</span>
+              <span className="font-medium text-rose-50">Motivo: {bannedNotice.reason}</span>
+            </div>
+          </div>
+          <button 
+            onClick={() => setBannedNotice(null)}
+            className="p-1 hover:bg-rose-700 rounded-lg text-xs font-bold transition-colors opacity-80 hover:opacity-100"
+            title="Cerrar notificación"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Navbar */}
       <nav className="max-w-7xl mx-auto px-6 py-8 flex items-center justify-between relative z-10">
         <div className="flex items-center gap-2">
@@ -124,6 +169,27 @@ export default function Landing({ onStart }: { onStart: (user?: any) => void }) 
               </div>
 
               <form onSubmit={handleAuth} className="space-y-4">
+                {/* Banned Alert Banner inside modal */}
+                {bannedNotice && (
+                  <div className="p-4 rounded-2xl bg-rose-500/10 border-2 border-rose-500/50 text-rose-700 dark:text-rose-400 space-y-2.5 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex items-center gap-2 font-bold text-sm text-rose-600 dark:text-rose-400">
+                      <ShieldAlert size={18} className="shrink-0 text-rose-600" />
+                      <span>Acceso Denegado: Usuario Baneado</span>
+                    </div>
+                    <div className="text-xs bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 text-rose-800 dark:text-rose-300">
+                      <span className="font-bold block mb-1 text-[10px] uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                        Motivo del baneo:
+                      </span>
+                      <p className="font-medium break-words leading-relaxed">
+                        {bannedNotice.reason}
+                      </p>
+                    </div>
+                    <p className="text-[11px] opacity-75 leading-tight">
+                      Tu cuenta ha sido restringida por administración. No es posible iniciar sesión.
+                    </p>
+                  </div>
+                )}
+
                 {error && (
                   <div className="p-3 rounded-xl bg-rose-50 text-rose-600 text-xs font-bold flex items-center gap-2">
                     <AlertCircle size={14} />

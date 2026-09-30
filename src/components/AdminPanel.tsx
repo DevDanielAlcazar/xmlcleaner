@@ -15,6 +15,11 @@ import {
   ChevronRight,
   MoreHorizontal,
   ArrowUpRight,
+  ArrowDownRight,
+  Ban,
+  UserX,
+  UserCheck,
+  ShieldAlert,
   RefreshCw,
   LogOut,
   X,
@@ -41,6 +46,10 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
   const [webhookStatus, setWebhookStatus] = useState<{configured: boolean, endpoint: string} | null>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [newCredits, setNewCredits] = useState<number>(0);
+  const [banningUser, setBanningUser] = useState<any>(null);
+  const [banReasonText, setBanReasonText] = useState<string>("");
+  const [banError, setBanError] = useState<string>("");
+  const [actionLoading, setActionLoading] = useState<boolean>(false);
   const [modules, setModules] = useState<any[]>([]);
   const [loadingModules, setLoadingModules] = useState(true);
 
@@ -272,7 +281,7 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
     }
   };
 
-  const handleUpgradePro = async (userId: string) => {
+  const handleUpgradePro = async (userId: string | number) => {
     if (!window.confirm("¿Estás seguro de elevar este usuario a PRO? Esto le dará 10,000 créditos y el plan Pro Unlimited.")) return;
     try {
       const res = await fetch("/api/admin/users/upgrade-pro", {
@@ -288,6 +297,79 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
     }
   };
 
+  const handleDowngradeStarter = async (userId: string | number) => {
+    if (!window.confirm("¿Estás seguro de degradar este usuario a Free Starter? Sus créditos se reiniciarán a 5.")) return;
+    try {
+      const res = await fetch("/api/admin/users/downgrade-free", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId })
+      });
+      if (res.ok) {
+        fetchUsers();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Error al degradar usuario");
+      }
+    } catch (err) {
+      console.error("Error downgrading user:", err);
+    }
+  };
+
+  const handleOpenBanModal = (targetUser: any) => {
+    setBanningUser(targetUser);
+    setBanReasonText(targetUser.ban_reason || "");
+    setBanError("");
+  };
+
+  const handleConfirmBan = async () => {
+    if (!banningUser) return;
+    if (!banReasonText.trim()) {
+      setBanError("Por favor ingresa un motivo para el baneo.");
+      return;
+    }
+    setActionLoading(true);
+    setBanError("");
+    try {
+      const res = await fetch("/api/admin/users/ban", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: banningUser.id, reason: banReasonText.trim() })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBanningUser(null);
+        setBanReasonText("");
+        fetchUsers();
+      } else {
+        setBanError(data.error || "No se pudo banear al usuario.");
+      }
+    } catch (err: any) {
+      setBanError(err.message || "Error al conectar con el servidor.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUnban = async (userId: string | number) => {
+    if (!window.confirm("¿Deseas desbanear a este usuario para restablecer su acceso a la plataforma?")) return;
+    try {
+      const res = await fetch("/api/admin/users/unban", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId })
+      });
+      if (res.ok) {
+        fetchUsers();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Error al desbanear usuario");
+      }
+    } catch (err) {
+      console.error("Error unbanning user:", err);
+    }
+  };
+
   const handleExportUsers = () => {
     const dataToExport = userList.map(u => ({
       ID: u.id,
@@ -295,7 +377,9 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
       Email: u.email,
       Plan: u.plan,
       Créditos: u.credits,
-      Rol: u.role,
+      Rol: u.role || 'Usuario',
+      Estado: u.is_banned ? 'Baneado' : 'Activo',
+      "Motivo Baneo": u.ban_reason || 'N/A',
       "Fecha de Registro": u.joined
     }));
 
@@ -607,12 +691,28 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
                     <tr key={u.id} className="hover:bg-[var(--bg)]/30 transition-colors group">
                       <td className="px-8 py-6">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-brand/10 flex items-center justify-center text-brand text-[10px] font-bold">
+                          <div className={cn(
+                            "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold",
+                            u.is_banned ? "bg-rose-500/10 text-rose-500" : "bg-brand/10 text-brand"
+                          )}>
                             {u.name.split(' ').map((n: any) => n[0]).join('')}
                           </div>
                           <div>
-                            <p className="text-xs font-bold">{u.name}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-bold">{u.name}</p>
+                              {u.is_banned && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-rose-500/15 text-rose-500 border border-rose-500/20 inline-flex items-center gap-1" title={u.ban_reason || 'Sin motivo'}>
+                                  <ShieldAlert size={10} />
+                                  Baneado
+                                </span>
+                              )}
+                            </div>
                             <p className="text-[10px] opacity-40">{u.email}</p>
+                            {u.is_banned && u.ban_reason && (
+                              <p className="text-[10px] text-rose-500/80 font-medium mt-0.5 max-w-xs truncate" title={u.ban_reason}>
+                                Motivo: {u.ban_reason}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -631,8 +731,8 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
                         <p className="text-xs opacity-40">{u.joined}</p>
                       </td>
                       <td className="px-8 py-6 text-right">
-                        <div className="flex justify-end gap-2">
-                          {u.plan !== 'Pro Unlimited' && (
+                        <div className="flex justify-end items-center gap-1.5">
+                          {u.plan !== 'Pro Unlimited' ? (
                             <button 
                               onClick={() => handleUpgradePro(u.id)}
                               className="p-2 rounded-lg hover:bg-emerald-50 text-emerald-600 transition-colors"
@@ -640,13 +740,41 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
                             >
                               <ArrowUpRight size={14} />
                             </button>
+                          ) : (
+                            <button 
+                              onClick={() => handleDowngradeStarter(u.id)}
+                              className="p-2 rounded-lg hover:bg-amber-50 text-amber-600 transition-colors"
+                              title="Degradar a Free Starter"
+                            >
+                              <ArrowDownRight size={14} />
+                            </button>
                           )}
+
+                          {!u.is_banned ? (
+                            <button 
+                              onClick={() => handleOpenBanModal(u)}
+                              className="p-2 rounded-lg hover:bg-rose-50 text-rose-500 hover:text-rose-600 transition-colors"
+                              title="Banear usuario"
+                            >
+                              <Ban size={14} />
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => handleUnban(u.id)}
+                              className="p-2 rounded-lg hover:bg-emerald-50 text-emerald-600 transition-colors"
+                              title="Desbanear usuario"
+                            >
+                              <UserCheck size={14} />
+                            </button>
+                          )}
+
                           <button 
                             onClick={() => {
                               setEditingUser(u);
                               setNewCredits(u.credits);
                             }}
                             className="p-2 rounded-lg hover:bg-[var(--border)] opacity-40 hover:opacity-100 transition-all"
+                            title="Editar créditos"
                           >
                             <MoreHorizontal size={14} />
                           </button>
@@ -692,6 +820,74 @@ export default function AdminPanel({ onBack, user }: { onBack: () => void, user:
                         Guardar
                       </button>
                     </div>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+
+            {banningUser && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <motion.div 
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="bg-[var(--card)] p-8 rounded-[2rem] border border-rose-500/30 max-w-md w-full shadow-2xl space-y-6"
+                >
+                  <div className="flex items-center gap-3 text-rose-600">
+                    <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+                      <ShieldAlert size={22} className="text-rose-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-[var(--text)]">Banear Usuario</h3>
+                      <p className="text-xs text-rose-600 font-medium">Bloqueo de acceso al sistema</p>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-xs space-y-1">
+                    <p className="font-bold text-[var(--text)]">{banningUser.name}</p>
+                    <p className="opacity-50">{banningUser.email}</p>
+                    <p className="text-[10px] text-brand font-medium">Plan actual: {banningUser.plan}</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-[11px] font-bold uppercase tracking-widest opacity-60">
+                      Motivo del baneo <span className="text-rose-500">*</span>
+                    </label>
+                    <p className="text-[11px] opacity-50">
+                      Ingresa la razón del baneo. Este mensaje se le mostrará al usuario en un banner rojo cuando intente iniciar sesión:
+                    </p>
+                    <textarea 
+                      rows={3}
+                      value={banReasonText}
+                      onChange={(e) => setBanReasonText(e.target.value)}
+                      placeholder="Ej: Violación de términos y condiciones / Actividad sospechosa..."
+                      className="w-full px-4 py-3 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-sm focus:outline-none focus:border-rose-500 transition-colors resize-none font-medium"
+                    />
+                    {banError && (
+                      <p className="text-xs font-semibold text-rose-500">{banError}</p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setBanningUser(null);
+                        setBanError("");
+                      }}
+                      disabled={actionLoading}
+                      className="flex-1 py-3 rounded-xl border border-[var(--border)] font-bold text-sm hover:bg-[var(--bg)] transition-colors opacity-70 hover:opacity-100"
+                    >
+                      Cancelar
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={handleConfirmBan}
+                      disabled={actionLoading}
+                      className="flex-1 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-lg shadow-rose-600/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Ban size={15} />
+                      {actionLoading ? "Baneando..." : "Confirmar Baneo"}
+                    </button>
                   </div>
                 </motion.div>
               </div>

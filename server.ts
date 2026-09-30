@@ -23,6 +23,8 @@ let mockUsers: any[] = [
     credits: 10000,
     plan: "Pro Unlimited",
     is_admin: true,
+    is_banned: false,
+    ban_reason: null,
     stripe_customer_id: null,
     created_at: new Date()
   },
@@ -38,6 +40,8 @@ let mockUsers: any[] = [
     credits: 5,
     plan: "Free Starter",
     is_admin: false,
+    is_banned: false,
+    ban_reason: null,
     stripe_customer_id: null,
     created_at: new Date()
   }
@@ -122,7 +126,38 @@ async function executeMockQuery(sql: string, params: any[] = []): Promise<{ rows
     return { rows: mockUsers.filter(u => u.plan !== 'Free Starter') };
   }
   if (upper.includes("FROM USERS") && upper.includes("ORDER BY CREATED_AT")) {
-    return { rows: mockUsers.map(u => ({ id: u.id, name: u.name, email: u.email, plan: u.plan, credits: u.credits, joined: u.created_at })) };
+    return { 
+      rows: mockUsers.map(u => ({ 
+        id: u.id, 
+        name: u.name, 
+        email: u.email, 
+        plan: u.plan, 
+        credits: u.credits, 
+        is_banned: Boolean(u.is_banned),
+        ban_reason: u.ban_reason || null,
+        joined: u.created_at 
+      })) 
+    };
+  }
+  if (upper.includes("UPDATE USERS") && upper.includes("FREE STARTER")) {
+    const uid = Number(params[0]);
+    const u = mockUsers.find(user => user.id === uid);
+    if (u) {
+      u.plan = "Free Starter";
+      u.credits = 5;
+    }
+    return { rows: [] };
+  }
+  if (upper.includes("UPDATE USERS") && upper.includes("IS_BANNED")) {
+    const isBanned = Boolean(params[0]);
+    const reason = params[1] || null;
+    const uid = Number(params[2]);
+    const u = mockUsers.find(user => user.id === uid);
+    if (u) {
+      u.is_banned = isBanned;
+      u.ban_reason = reason;
+    }
+    return { rows: [] };
   }
   if (upper.includes("INSERT INTO USERS")) {
     const [name, email, password_hash, rfc, curp, s_rfc, s_curp] = params;
@@ -144,6 +179,8 @@ async function executeMockQuery(sql: string, params: any[] = []): Promise<{ rows
       credits: 5,
       plan: "Free Starter",
       is_admin: false,
+      is_banned: false,
+      ban_reason: null,
       stripe_customer_id: null,
       created_at: new Date()
     };
@@ -262,6 +299,25 @@ async function startServer() {
           published_date VARCHAR(50),
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          password_hash VARCHAR(255) NOT NULL,
+          rfc VARCHAR(20),
+          curp VARCHAR(25),
+          security_answer_rfc VARCHAR(20),
+          security_answer_curp VARCHAR(25),
+          credits INTEGER DEFAULT 5,
+          plan VARCHAR(50) DEFAULT 'Free Starter',
+          is_admin BOOLEAN DEFAULT FALSE,
+          is_banned BOOLEAN DEFAULT FALSE,
+          ban_reason TEXT,
+          stripe_customer_id VARCHAR(255),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason TEXT;
       `);
       const countRes = await realPool.query("SELECT COUNT(*) FROM efos_blacklist");
       if (parseInt(countRes.rows[0].count) === 0) {
@@ -506,11 +562,11 @@ async function startServer() {
   app.get("/api/user/credits", async (req, res) => {
     const { userId } = req.query;
     try {
-      const result = await pool.query("SELECT credits, plan FROM users WHERE id = $1", [userId]);
+      const result = await pool.query("SELECT credits, plan, is_banned, ban_reason FROM users WHERE id = $1", [userId]);
       if (result.rows.length > 0) {
         res.json(result.rows[0]);
       } else {
-        res.json({ credits: 5, plan: "Free Starter" });
+        res.json({ credits: 5, plan: "Free Starter", is_banned: false, ban_reason: null });
       }
     } catch (err) {
       res.status(500).json({ error: "Database error" });
@@ -595,7 +651,7 @@ async function startServer() {
   app.get("/api/admin/users", async (req, res) => {
     try {
       const result = await pool.query(
-        "SELECT id, name, email, plan, credits, created_at as joined FROM users ORDER BY created_at DESC"
+        "SELECT id, name, email, plan, credits, is_banned, ban_reason, created_at as joined FROM users ORDER BY created_at DESC"
       );
       res.json(result.rows);
     } catch (err) {
@@ -623,6 +679,48 @@ async function startServer() {
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ error: "Error upgrading user to Pro" });
+    }
+  });
+
+  app.post("/api/admin/users/downgrade-free", async (req, res) => {
+    const { userId } = req.body;
+    try {
+      await pool.query(
+        "UPDATE users SET credits = 5, plan = 'Free Starter' WHERE id = $1",
+        [userId]
+      );
+      res.json({ success: true, message: "Usuario degradado a Free Starter exitosamente" });
+    } catch (err) {
+      res.status(500).json({ error: "Error al degradar usuario a Free Starter" });
+    }
+  });
+
+  app.post("/api/admin/users/ban", async (req, res) => {
+    const { userId, reason } = req.body;
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: "Debes ingresar un motivo para el baneo." });
+    }
+    try {
+      await pool.query(
+        "UPDATE users SET is_banned = $1, ban_reason = $2 WHERE id = $3",
+        [true, reason.trim(), userId]
+      );
+      res.json({ success: true, message: "Usuario baneado correctamente" });
+    } catch (err) {
+      res.status(500).json({ error: "Error al banear usuario" });
+    }
+  });
+
+  app.post("/api/admin/users/unban", async (req, res) => {
+    const { userId } = req.body;
+    try {
+      await pool.query(
+        "UPDATE users SET is_banned = $1, ban_reason = $2 WHERE id = $3",
+        [false, null, userId]
+      );
+      res.json({ success: true, message: "Usuario desbaneado correctamente" });
+    } catch (err) {
+      res.status(500).json({ error: "Error al desbanear usuario" });
     }
   });
 
@@ -687,6 +785,13 @@ async function startServer() {
       const valid = await bcrypt.compare(password, user.password_hash);
       if (!valid) {
         return res.status(401).json({ error: "Credenciales inválidas" });
+      }
+      if (user.is_banned) {
+        return res.status(403).json({ 
+          error: "Tu cuenta ha sido suspendida / baneada.",
+          isBanned: true,
+          banReason: user.ban_reason || "Incumplimiento de las políticas y condiciones del servicio."
+        });
       }
       res.json({ 
         success: true, 
