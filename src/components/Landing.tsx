@@ -6,7 +6,7 @@ import { cn } from "../utils/cn";
 import React, { useState } from "react";
 import xmlsLogo from "../assets/XMLslogo.png";
 import consafedevShield from "../assets/consafedev-shield.png";
-import consafedevLetters from "../assets/consafedev-letters-clean.png";
+import consafedevLetters from "../assets/consafedev-letters.png";
 
 export default function Landing({ 
   onStart, 
@@ -625,17 +625,17 @@ export default function Landing({
                 <img
                   src={consafedevShield}
                   alt="ConSafeDev Escudo"
-                  className="w-8 h-8 object-contain shrink-0 group-hover:scale-105 transition-transform drop-shadow-sm"
+                  className="w-9 h-9 object-contain shrink-0 group-hover:scale-105 transition-transform drop-shadow-sm"
                 />
                 <div className="flex flex-col justify-center">
-                  <div className="flex items-center bg-white/90 dark:bg-white/95 px-2 py-0.5 rounded-md shadow-xs border border-black/5 w-fit">
+                  <div className="flex items-center">
                     <img
                       src={consafedevLetters}
                       alt="ConSafeDev"
-                      className="h-4 sm:h-[18px] w-auto object-contain"
+                      className="h-6 w-auto max-w-[140px] object-contain transition-all"
                     />
                   </div>
-                  <span className="text-[11px] text-brand font-semibold group-hover:underline flex items-center gap-1 mt-1">
+                  <span className="text-[11px] text-brand font-semibold group-hover:underline flex items-center gap-1 mt-0.5">
                     ¡Visita nuestra web oficial! →
                   </span>
                 </div>
