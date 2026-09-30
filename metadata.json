@@ -1,5 +1,6 @@
 {
   "name": "XML Cleaner Web SaaS",
   "description": "Plataforma profesional para la limpieza y corrección de archivos XML para cumplimiento con PAC/SAT.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

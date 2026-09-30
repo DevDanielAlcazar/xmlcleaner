@@ -1093,7 +1093,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
   };
 
   const validateSAT = async (itemsToValidate = results) => {
-    if (itemsToValidate.length === 0) return;
+    if (!itemsToValidate || itemsToValidate.length === 0) return;
 
     // Enforce Free Starter limit for SAT validation too
     if (plan === "Free Starter" && itemsToValidate.length > 5) {
@@ -1104,55 +1104,67 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
     setValidatingSAT(true);
     const updatedResults = [...itemsToValidate];
 
-    for (let i = 0; i < updatedResults.length; i++) {
-      const res = updatedResults[i];
-      if (!res.success) continue;
+    try {
+      for (let i = 0; i < updatedResults.length; i++) {
+        const res = updatedResults[i];
+        if (!res || !res.success) continue;
 
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(res.cleanedContent, "text/xml");
-      
-      // Helper to find element regardless of namespace prefix
-      const getElement = (tagName: string) => {
-        const elements = xmlDoc.getElementsByTagNameNS("*", tagName);
-        return elements.length > 0 ? elements[0] : xmlDoc.getElementsByTagName(tagName)[0] || xmlDoc.getElementsByTagName(`cfdi:${tagName}`)[0];
-      };
-
-      const comprobante = getElement("Comprobante");
-      const emisor = getElement("Emisor");
-      const receptor = getElement("Receptor");
-      const timbre = getElement("TimbreFiscalDigital");
-
-      const re = emisor?.getAttribute("Rfc");
-      const rr = receptor?.getAttribute("Rfc");
-      const tt = comprobante?.getAttribute("Total");
-      const id = timbre?.getAttribute("UUID");
-
-      if (re && rr && tt && id) {
         try {
-          const response = await fetch("/api/sat/status", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ re, rr, tt, id })
-          });
-          const data = await response.json();
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(res.cleanedContent, "text/xml");
           
-          if (response.ok) {
-            updatedResults[i] = { ...res, satStatus: data };
+          // Helper to find element regardless of namespace prefix
+          const getElement = (tagName: string) => {
+            const elements = xmlDoc.getElementsByTagNameNS("*", tagName);
+            return elements.length > 0 ? elements[0] : xmlDoc.getElementsByTagName(tagName)[0] || xmlDoc.getElementsByTagName(`cfdi:${tagName}`)[0];
+          };
+
+          const comprobante = getElement("Comprobante");
+          const emisor = getElement("Emisor");
+          const receptor = getElement("Receptor");
+          const timbre = getElement("TimbreFiscalDigital");
+
+          const re = emisor?.getAttribute("Rfc");
+          const rr = receptor?.getAttribute("Rfc");
+          const tt = comprobante?.getAttribute("Total");
+          const id = timbre?.getAttribute("UUID");
+
+          if (re && rr && tt && id) {
+            try {
+              const response = await fetch("/api/sat/status", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ re, rr, tt, id })
+              });
+              let data: any = null;
+              try {
+                data = await response.json();
+              } catch {
+                data = { error: "Respuesta no estructurada del servidor" };
+              }
+              
+              if (response.ok && data) {
+                updatedResults[i] = { ...res, satStatus: data };
+              } else {
+                updatedResults[i] = { ...res, satStatus: { estado: "Error SAT", codigo: data?.error || "Error interno del SAT", cancelable: "N/A" } };
+              }
+              setResults([...updatedResults]); // Update UI progressively
+            } catch (err) {
+              console.error("Error validating SAT:", err);
+              updatedResults[i] = { ...res, satStatus: { estado: "Error de Conexión", codigo: "No se pudo conectar al SAT", cancelable: "N/A" } };
+              setResults([...updatedResults]);
+            }
           } else {
-            updatedResults[i] = { ...res, satStatus: { estado: "Error SAT", codigo: data.error || "Error interno del SAT", cancelable: "N/A" } };
+            updatedResults[i] = { ...res, satStatus: { estado: "XML Inválido", codigo: "Faltan datos requeridos (RFC, Total, UUID)", cancelable: "N/A" } };
+            setResults([...updatedResults]);
           }
-          setResults([...updatedResults]); // Update UI progressively
-        } catch (err) {
-          console.error("Error validating SAT:", err);
-          updatedResults[i] = { ...res, satStatus: { estado: "Error de Conexión", codigo: "No se pudo conectar al SAT", cancelable: "N/A" } };
-          setResults([...updatedResults]);
+        } catch (itemErr) {
+          console.error("Error processing item for SAT:", itemErr);
         }
-      } else {
-        updatedResults[i] = { ...res, satStatus: { estado: "XML Inválido", codigo: "Faltan datos requeridos (RFC, Total, UUID)", cancelable: "N/A" } };
-        setResults([...updatedResults]);
       }
+    } finally {
+      setValidatingSAT(false);
     }
-    setValidatingSAT(false);
   };
 
   const handleUpgrade = async (priceId?: string) => {
@@ -1576,7 +1588,7 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
               </div>
             </div>
           ) : activeTab === 'sat' ? (
-            <div className="lg:col-span-3 p-6 lg:p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)]">
+            <div className="lg:col-span-3 p-6 lg:p-10 rounded-[2.5rem] bg-[var(--card)] border border-[var(--border)] notranslate" translate="no">
               <div className="flex justify-between items-center mb-12">
                 <div>
                   <h2 className="text-3xl font-display font-bold mb-2">Estatus Legal SAT</h2>
@@ -1591,34 +1603,40 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                 <div className="lg:col-span-2 space-y-6">
                   <div 
                     {...getRootProps()} 
-                    className="aspect-square rounded-[2.5rem] border-2 border-dashed border-[var(--border)] bg-[var(--bg)] flex flex-col items-center justify-center p-8 cursor-pointer hover:border-blue-500/50 transition-all group"
+                    className="aspect-square rounded-[2.5rem] border-2 border-dashed border-[var(--border)] bg-[var(--bg)] flex flex-col items-center justify-center p-8 cursor-pointer hover:border-blue-500/50 transition-all group select-none"
                   >
-                    <input {...getInputProps()} />
+                    <input {...getInputProps()} key="sat-file-input" />
                     <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 mb-6 group-hover:scale-110 transition-transform">
                       <Search size={32} />
                     </div>
-                    <p className="font-bold text-center text-lg">Sube tus XMLs</p>
-                    <p className="text-xs opacity-40 mt-2 text-center">Arrastra o haz clic para seleccionar los archivos a validar</p>
+                    <p className="font-bold text-center text-lg"><span>Sube tus XMLs</span></p>
+                    <p className="text-xs opacity-40 mt-2 text-center"><span>Arrastra o haz clic para seleccionar los archivos a validar</span></p>
                   </div>
 
                   {files.length > 0 && (
                     <button 
+                      key="sat-validate-btn"
                       disabled={processing || validatingSAT}
                       onClick={async () => {
-                        setValidatingSAT(true); // Show loading state immediately
+                        setValidatingSAT(true);
                         setProcessing(true);
-                        const newResults = [];
-                        for(const f of files) {
-                          const res = await cleanXML(f);
-                          newResults.push(res);
+                        try {
+                          const newResults = [];
+                          for (const f of files) {
+                            const res = await cleanXML(f);
+                            newResults.push(res);
+                          }
+                          setResults(newResults);
+                          setProcessing(false);
+                          await validateSAT(newResults);
+                        } catch (err) {
+                          console.error("Error durante validación SAT:", err);
+                          setProcessing(false);
+                          setValidatingSAT(false);
                         }
-                        setResults(newResults);
-                        setProcessing(false);
-                        // Call validateSAT with the newly processed results
-                        await validateSAT(newResults);
                       }}
                       className={cn(
-                        "w-full py-5 rounded-[1.5rem] font-bold shadow-xl transition-all flex items-center justify-center gap-3",
+                        "w-full py-5 rounded-[1.5rem] font-bold shadow-xl transition-all flex items-center justify-center gap-3 select-none",
                         (processing || validatingSAT) 
                           ? "bg-blue-600/50 text-white/80 cursor-not-allowed shadow-none" 
                           : "bg-blue-600 text-white shadow-blue-600/20 hover:scale-[1.02] active:scale-[0.98]"
@@ -1627,12 +1645,12 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                       {(processing || validatingSAT) ? (
                         <>
                           <RefreshCw size={20} className="animate-spin" />
-                          {processing ? "Procesando XMLs..." : "Consultando al SAT..."}
+                          <span>{processing ? "Procesando XMLs..." : "Consultando al SAT..."}</span>
                         </>
                       ) : (
                         <>
                           <Zap size={20} />
-                          Validar {files.length} Comprobantes
+                          <span>Validar {files.length} Comprobantes</span>
                         </>
                       )}
                     </button>
@@ -1640,74 +1658,70 @@ export default function Dashboard({ user, onAdmin, onLogout }: { user: any, onAd
                 </div>
 
                 <div className="lg:col-span-3">
-                  {results.some(r => r.satStatus) ? (
-                    <div className="space-y-6">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-bold text-lg flex items-center gap-2">
-                          <CheckCircle2 size={20} className="text-blue-500" />
-                          Resultados de Consulta
-                        </h4>
-                        <div className="flex gap-2">
-                          <div className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-[10px] font-bold uppercase tracking-wider">
-                            {results.filter(r => r.satStatus?.estado === 'Vigente').length} Vigentes
-                          </div>
-                          <div className="px-3 py-1 rounded-full bg-rose-500/10 text-rose-600 text-[10px] font-bold uppercase tracking-wider">
-                            {results.filter(r => r.satStatus && r.satStatus.estado !== 'Vigente').length} Otros
-                          </div>
+                  <div className={cn("h-full flex flex-col items-center justify-center opacity-20 text-center p-12", results.some(r => r.satStatus) && "hidden")}>
+                    <Globe size={64} className="mb-6" />
+                    <p className="text-xl font-display font-bold"><span>Sin resultados</span></p>
+                    <p className="text-sm"><span>Sube tus archivos para iniciar la validación legal</span></p>
+                  </div>
+
+                  <div className={cn("space-y-6", !results.some(r => r.satStatus) && "hidden")}>
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-bold text-lg flex items-center gap-2">
+                        <CheckCircle2 size={20} className="text-blue-500" />
+                        <span>Resultados de Consulta</span>
+                      </h4>
+                      <div className="flex gap-2">
+                        <div className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-[10px] font-bold uppercase tracking-wider">
+                          <span>{results.filter(r => r.satStatus?.estado === 'Vigente').length} Vigentes</span>
+                        </div>
+                        <div className="px-3 py-1 rounded-full bg-rose-500/10 text-rose-600 text-[10px] font-bold uppercase tracking-wider">
+                          <span>{results.filter(r => r.satStatus && r.satStatus.estado !== 'Vigente').length} Otros</span>
                         </div>
                       </div>
+                    </div>
 
-                      <div className="grid grid-cols-1 gap-4 max-h-[500px] overflow-y-auto custom-scrollbar pr-4">
-                        {results.filter(r => r.satStatus).map((r, i) => (
-                          <motion.div 
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.05 }}
-                            key={i} 
-                            className="p-5 bg-[var(--bg)] rounded-[1.5rem] border border-[var(--border)] hover:border-blue-500/30 transition-colors shadow-sm"
-                          >
-                            <div className="flex justify-between items-start mb-4">
-                              <div className="flex items-center gap-3">
-                                <div className={cn(
-                                  "w-10 h-10 rounded-xl flex items-center justify-center",
-                                  r.satStatus?.estado === 'Vigente' ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
-                                )}>
-                                  <FileText size={20} />
-                                </div>
-                                <div>
-                                  <p className="text-sm font-bold truncate max-w-[150px] sm:max-w-[250px]">{r.originalName}</p>
-                                  <p className="text-[10px] opacity-40 font-mono">{r.warnings[0] || 'CFDI 4.0'}</p>
-                                </div>
-                              </div>
-                              <span className={cn(
-                                "text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest",
-                                r.satStatus?.estado === 'Vigente' ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
+                    <div className="grid grid-cols-1 gap-4 max-h-[500px] overflow-y-auto custom-scrollbar pr-4">
+                      {results.filter(r => r.satStatus).map((r, i) => (
+                        <div 
+                          key={`sat-item-${r.originalName || i}-${i}`}
+                          className="p-5 bg-[var(--bg)] rounded-[1.5rem] border border-[var(--border)] hover:border-blue-500/30 transition-colors shadow-sm notranslate"
+                          translate="no"
+                        >
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className={cn(
+                                "w-10 h-10 rounded-xl flex items-center justify-center",
+                                r.satStatus?.estado === 'Vigente' ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
                               )}>
-                                {r.satStatus?.estado}
-                              </span>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-6 pt-4 border-t border-[var(--border)]">
+                                <FileText size={20} />
+                              </div>
                               <div>
-                                <p className="text-[9px] font-bold opacity-30 uppercase mb-1">{t('satCode')}</p>
-                                <p className="text-[11px] font-medium leading-tight">{r.satStatus?.codigo}</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-[9px] font-bold opacity-30 uppercase mb-1">{t('satCancelable')}</p>
-                                <p className="text-[11px] font-medium">{r.satStatus?.cancelable}</p>
+                                <p className="text-sm font-bold truncate max-w-[150px] sm:max-w-[250px]"><span>{r.originalName}</span></p>
+                                <p className="text-[10px] opacity-40 font-mono"><span>{r.warnings[0] || 'CFDI 4.0'}</span></p>
                               </div>
                             </div>
-                          </motion.div>
-                        ))}
-                      </div>
+                            <span className={cn(
+                              "text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest",
+                              r.satStatus?.estado === 'Vigente' ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
+                            )}>
+                              {r.satStatus?.estado}
+                            </span>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-6 pt-4 border-t border-[var(--border)]">
+                            <div>
+                              <p className="text-[9px] font-bold opacity-30 uppercase mb-1"><span>{t('satCode')}</span></p>
+                              <p className="text-[11px] font-medium leading-tight"><span>{r.satStatus?.codigo}</span></p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[9px] font-bold opacity-30 uppercase mb-1"><span>{t('satCancelable')}</span></p>
+                              <p className="text-[11px] font-medium"><span>{r.satStatus?.cancelable}</span></p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center opacity-20 text-center p-12">
-                      <Globe size={64} className="mb-6" />
-                      <p className="text-xl font-display font-bold">Sin resultados</p>
-                      <p className="text-sm">Sube tus archivos para iniciar la validación legal</p>
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>

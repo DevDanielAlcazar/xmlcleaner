@@ -3,7 +3,78 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>XMLs PRO</title>
+    <title>XML Cleaner Web SaaS</title>
+    <meta name="description" content="Plataforma profesional para la limpieza y corrección de archivos XML para cumplimiento con PAC/SAT." />
+    <meta property="og:title" content="XML Cleaner Web SaaS" />
+    <meta property="og:description" content="Plataforma profesional para la limpieza y corrección de archivos XML para cumplimiento con PAC/SAT." />
+    <script>
+      (function() {
+        if (typeof Node !== 'undefined' && Node.prototype) {
+          var origRemove = Node.prototype.removeChild;
+          Node.prototype.removeChild = function(child) {
+            try {
+              if (child && child.parentNode === this) {
+                return origRemove.call(this, child);
+              }
+              if (child && child.parentNode) {
+                return child.parentNode.removeChild(child);
+              }
+            } catch (e) {
+              // Ignore DOM removal exception caused by translation extensions
+            }
+            return child;
+          };
+
+          var origInsert = Node.prototype.insertBefore;
+          Node.prototype.insertBefore = function(newNode, refNode) {
+            try {
+              if (refNode && refNode.parentNode === this) {
+                return origInsert.call(this, newNode, refNode);
+              }
+              if (refNode && refNode.parentNode) {
+                return refNode.parentNode.insertBefore(newNode, refNode);
+              }
+              return this.appendChild(newNode);
+            } catch (e) {
+              try {
+                return this.appendChild(newNode);
+              } catch (err) {
+                return newNode;
+              }
+            }
+          };
+
+          var origReplace = Node.prototype.replaceChild;
+          if (origReplace) {
+            Node.prototype.replaceChild = function(newChild, oldChild) {
+              try {
+                if (oldChild && oldChild.parentNode === this) {
+                  return origReplace.call(this, newChild, oldChild);
+                }
+                if (oldChild && oldChild.parentNode) {
+                  return oldChild.parentNode.replaceChild(newChild, oldChild);
+                }
+              } catch (e) {}
+              return newChild;
+            };
+          }
+        }
+
+        // Global handler to prevent unhandled removeChild/insertBefore from crashing React
+        window.addEventListener('error', function(e) {
+          var msg = (e && e.message) ? String(e.message) : '';
+          if (
+            msg.indexOf('removeChild') !== -1 ||
+            msg.indexOf('insertBefore') !== -1 ||
+            msg.indexOf('not a child of this node') !== -1
+          ) {
+            if (e.preventDefault) e.preventDefault();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+            return true;
+          }
+        }, true);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
